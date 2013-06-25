@@ -15,17 +15,19 @@
  */
 package org.intellij.grammar.parser;
 
-import org.jetbrains.annotations.*;
+import static org.intellij.grammar.parser.GrammarParserUtil.*;
+import static org.intellij.grammar.psi.BnfTypes.*;
+
+import org.jetbrains.annotations.NotNull;
+import com.intellij.lang.ASTNode;
+import com.intellij.lang.LanguageVersion;
 import com.intellij.lang.LighterASTNode;
 import com.intellij.lang.PsiBuilder;
 import com.intellij.lang.PsiBuilder.Marker;
-import com.intellij.openapi.diagnostic.Logger;
-import static org.intellij.grammar.psi.BnfTypes.*;
-import static org.intellij.grammar.parser.GrammarParserUtil.*;
-import com.intellij.psi.tree.IElementType;
-import com.intellij.lang.ASTNode;
-import com.intellij.psi.tree.TokenSet;
 import com.intellij.lang.PsiParser;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.psi.tree.IElementType;
+import com.intellij.psi.tree.TokenSet;
 
 @SuppressWarnings({"SimplifiableIfStatement", "UnusedAssignment"})
 public class GrammarParser implements PsiParser {
@@ -33,7 +35,7 @@ public class GrammarParser implements PsiParser {
   public static Logger LOG_ = Logger.getInstance("org.intellij.grammar.parser.GrammarParser");
 
   @NotNull
-  public ASTNode parse(IElementType root_, PsiBuilder builder_) {
+  public ASTNode parse(IElementType root_, PsiBuilder builder_, LanguageVersion languageVersion) {
     int level_ = 0;
     boolean result_;
     builder_ = adapt_builder_(root_, builder_, this);

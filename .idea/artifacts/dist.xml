@@ -1,0 +1,17 @@
+<component name="ArtifactManager">
+  <artifact build-on-make="true" name="dist">
+    <output-path>$PROJECT_DIR$/out/artifacts/dist</output-path>
+    <root id="root">
+      <element id="directory" name="bnf">
+        <element id="directory" name="lib">
+          <element id="archive" name="bnf.jar">
+            <element id="module-output" name="consulo-bnf" />
+            <element id="directory" name="templates">
+              <element id="file-copy" path="$PROJECT_DIR$/src/org/intellij/grammar/parser/GeneratedParserUtilBase.java" />
+            </element>
+          </element>
+        </element>
+      </element>
+    </root>
+  </artifact>
+</component>

@@ -1,9 +1,17 @@
 package org.intellij.grammar;
 
+import java.io.File;
+
+import org.intellij.grammar.inspection.BnfDuplicateRuleInspection;
+import org.intellij.grammar.inspection.BnfIdenticalChoiceBranchesInspection;
+import org.intellij.grammar.inspection.BnfLeftRecursionInspection;
+import org.intellij.grammar.inspection.BnfSuspiciousTokenInspection;
+import org.intellij.grammar.inspection.BnfUnreachableChoiceBranchInspection;
 import com.intellij.openapi.application.AccessToken;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.roots.ContentEntry;
+import com.intellij.openapi.roots.ContentFolderType;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.util.io.FileUtil;
@@ -12,9 +20,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase;
-import org.intellij.grammar.inspection.*;
-
-import java.io.File;
 
 /**
  * Created by IntelliJ IDEA.
@@ -51,8 +56,8 @@ public class BnfInspectionTest extends LightPlatformCodeInsightFixtureTestCase {
       String supportUrl = getUrl(testDataPath + "/../../support");
       String genUrl = getUrl(testDataPath + "/../../gen");
       if (add) {
-        model.addContentEntry(supportUrl).addSourceFolder(supportUrl, false);
-        model.addContentEntry(genUrl).addSourceFolder(genUrl, false);
+        model.addContentEntry(supportUrl).addFolder(supportUrl, ContentFolderType.SOURCE);
+        model.addContentEntry(genUrl).addFolder(genUrl, ContentFolderType.SOURCE);
       }
       else {
         for (ContentEntry entry : model.getContentEntries()) {

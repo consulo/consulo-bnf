@@ -1,5 +1,15 @@
 package org.intellij.grammar;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.intellij.grammar.generator.ParserGenerator;
+import org.intellij.grammar.psi.impl.BnfFileImpl;
+import org.jetbrains.annotations.NonNls;
 import com.intellij.concurrency.AsyncFutureFactory;
 import com.intellij.concurrency.AsyncFutureFactoryImpl;
 import com.intellij.concurrency.JobLauncher;
@@ -23,17 +33,6 @@ import com.intellij.psi.impl.source.tree.injected.InjectedLanguageManagerImpl;
 import com.intellij.psi.search.PsiSearchHelper;
 import com.intellij.rt.execution.junit.FileComparisonFailure;
 import com.intellij.testFramework.ParsingTestCase;
-import com.thaiopensource.xml.dtd.test.CompareFailException;
-import org.intellij.grammar.generator.ParserGenerator;
-import org.intellij.grammar.psi.impl.BnfFileImpl;
-import org.jetbrains.annotations.NonNls;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author gregsh

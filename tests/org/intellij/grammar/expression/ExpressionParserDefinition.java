@@ -1,8 +1,16 @@
 package org.intellij.grammar.expression;
 
+import javax.swing.Icon;
+
+import org.intellij.grammar.BnfParserDefinition;
+import org.intellij.grammar.parser.BnfLexer;
+import org.intellij.grammar.psi.BnfTypes;
+import org.intellij.grammar.psi.impl.BnfCompositeElementImpl;
+import org.jetbrains.annotations.NotNull;
 import com.intellij.extapi.psi.PsiFileBase;
 import com.intellij.lang.ASTNode;
 import com.intellij.lang.Language;
+import com.intellij.lang.LanguageVersion;
 import com.intellij.lang.PsiParser;
 import com.intellij.lexer.Lexer;
 import com.intellij.openapi.fileTypes.FileType;
@@ -14,13 +22,6 @@ import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.IFileElementType;
-import org.intellij.grammar.BnfParserDefinition;
-import org.intellij.grammar.parser.BnfLexer;
-import org.intellij.grammar.psi.BnfTypes;
-import org.intellij.grammar.psi.impl.BnfCompositeElementImpl;
-import org.jetbrains.annotations.NotNull;
-
-import javax.swing.*;
 
 /**
  * @author gregsh
@@ -68,7 +69,7 @@ public class ExpressionParserDefinition extends BnfParserDefinition{
 
   @NotNull
   @Override
-  public Lexer createLexer(Project project) {
+  public Lexer createLexer(Project project, LanguageVersion languageVersion) {
     return new BnfLexer();
   }
 
@@ -90,7 +91,7 @@ public class ExpressionParserDefinition extends BnfParserDefinition{
   }
 
   @Override
-  public PsiParser createParser(Project project) {
+  public PsiParser createParser(Project project, LanguageVersion languageVersion) {
     return new ExpressionParser();
   }
 
