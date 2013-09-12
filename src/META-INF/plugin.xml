@@ -37,6 +37,7 @@
   <extensions defaultExtensionNs="com.intellij">
     <errorHandler implementation="com.intellij.diagnostic.ITNReporter"/>
 
+	<iconDescriptorUpdater implementation="org.intellij.grammar.BnfIconDescriptorUpdater" />
     <fileTypeFactory implementation="org.intellij.grammar.BnfFileTypeFactory"/>
     <lang.parserDefinition language="BNF" implementationClass="org.intellij.grammar.BnfParserDefinition"/>
     <annotator language="BNF" implementationClass="org.intellij.grammar.editor.BnfAnnotator"/>

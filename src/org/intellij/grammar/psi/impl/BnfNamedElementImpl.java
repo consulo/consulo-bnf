@@ -19,15 +19,10 @@ import com.intellij.lang.ASTNode;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.search.LocalSearchScope;
 import com.intellij.psi.search.SearchScope;
-import com.intellij.ui.RowIcon;
 import com.intellij.util.IncorrectOperationException;
-import com.intellij.util.PlatformIcons;
-import org.intellij.grammar.BnfIcons;
-import org.intellij.grammar.psi.*;
+import org.intellij.grammar.psi.BnfNamedElement;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
-
-import javax.swing.*;
 
 import static org.intellij.grammar.psi.BnfTypes.BNF_ID;
 
@@ -78,31 +73,8 @@ public abstract class BnfNamedElementImpl extends BnfCompositeElementImpl implem
   }
 
   @Override
-  public Icon getIcon(int flags) {
-    if (this instanceof BnfRule) {
-      final Icon base = hasModifier((BnfRule)this, "external") ? BnfIcons.EXTERNAL_RULE : BnfIcons.RULE;
-      final Icon visibility = hasModifier((BnfRule)this, "private") ? PlatformIcons.PRIVATE_ICON : PlatformIcons.PUBLIC_ICON;
-      final RowIcon row = new RowIcon(2);
-      row.setIcon(base, 0);
-      row.setIcon(visibility, 1);
-      return row;
-    }
-    else if (this instanceof BnfAttr) {
-      return BnfIcons.ATTRIBUTE;
-    }
-    return super.getIcon(flags);
-  }
-
-  @Override
   public PsiElement getNameIdentifier() {
     return getId();
-  }
-
-  public static boolean hasModifier(BnfRule rule, String modifier) {
-    for (BnfModifier o : rule.getModifierList()) {
-      if (modifier.equals(o.getText())) return true;
-    }
-    return false;
   }
 
   @Override

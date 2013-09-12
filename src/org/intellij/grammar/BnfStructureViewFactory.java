@@ -15,26 +15,8 @@
  */
 package org.intellij.grammar;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.swing.Icon;
-
-import org.intellij.grammar.psi.BnfAttr;
-import org.intellij.grammar.psi.BnfAttrPattern;
-import org.intellij.grammar.psi.BnfAttrs;
-import org.intellij.grammar.psi.BnfExpression;
-import org.intellij.grammar.psi.BnfFile;
-import org.intellij.grammar.psi.BnfRule;
-import org.intellij.grammar.psi.BnfValueList;
-import org.intellij.grammar.psi.impl.BnfFileImpl;
-import org.jetbrains.annotations.NotNull;
-import com.intellij.icons.AllIcons;
-import com.intellij.ide.structureView.StructureViewBuilder;
-import com.intellij.ide.structureView.StructureViewModel;
-import com.intellij.ide.structureView.StructureViewModelBase;
-import com.intellij.ide.structureView.StructureViewTreeElement;
-import com.intellij.ide.structureView.TreeBasedStructureViewBuilder;
+import com.intellij.ide.IconDescriptorUpdaters;
+import com.intellij.ide.structureView.*;
 import com.intellij.ide.util.treeView.smartTree.TreeElement;
 import com.intellij.lang.PsiStructureViewFactory;
 import com.intellij.navigation.ItemPresentation;
@@ -43,6 +25,13 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiNamedElement;
 import com.intellij.util.containers.ContainerUtil;
+import org.intellij.grammar.psi.*;
+import org.intellij.grammar.psi.impl.BnfFileImpl;
+import org.jetbrains.annotations.NotNull;
+
+import javax.swing.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author gregsh
@@ -183,7 +172,7 @@ public class BnfStructureViewFactory implements PsiStructureViewFactory {
 
     @Override
     public Icon getIcon(boolean open) {
-      return myElement instanceof BnfAttrs ? AllIcons.Nodes.Package : myElement.getIcon(0);
+      return IconDescriptorUpdaters.getIcon(myElement, 0);
     }
   }
 }

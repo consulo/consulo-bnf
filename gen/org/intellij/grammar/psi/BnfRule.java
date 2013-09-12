@@ -15,22 +15,26 @@
  */
 package org.intellij.grammar.psi;
 
-import java.util.List;
-import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 public interface BnfRule extends BnfNamedElement {
 
-  @Nullable
-  BnfAttrs getAttrs();
+	@Nullable
+	BnfAttrs getAttrs();
 
-  @NotNull
-  BnfExpression getExpression();
+	@NotNull
+	BnfExpression getExpression();
 
-  @NotNull
-  List<BnfModifier> getModifierList();
+	@NotNull
+	List<BnfModifier> getModifierList();
 
-  @NotNull
-  PsiElement getId();
+	boolean hasModifier(String m);
+
+	@NotNull
+	PsiElement getId();
 
 }

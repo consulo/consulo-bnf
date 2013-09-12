@@ -16,25 +16,7 @@
 
 package org.intellij.grammar.livePreview;
 
-import java.util.Collections;
-import java.util.Map;
-
-import javax.swing.JComponent;
-import javax.swing.SwingConstants;
-
-import org.intellij.grammar.BnfFileType;
-import org.intellij.grammar.parser.GeneratedParserUtilBase;
-import org.intellij.grammar.psi.BnfExpression;
-import org.intellij.grammar.psi.BnfFile;
-import org.intellij.grammar.psi.BnfRule;
-import org.jetbrains.annotations.Nullable;
-import com.intellij.lang.Language;
-import com.intellij.lang.LanguageParserDefinitions;
-import com.intellij.lang.LanguageStructureViewBuilder;
-import com.intellij.lang.ParserDefinition;
-import com.intellij.lang.PsiBuilder;
-import com.intellij.lang.PsiBuilderFactory;
-import com.intellij.lang.PsiParser;
+import com.intellij.lang.*;
 import com.intellij.lexer.Lexer;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
@@ -62,10 +44,21 @@ import com.intellij.psi.impl.PsiManagerEx;
 import com.intellij.psi.impl.file.impl.FileManager;
 import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.util.FileContentUtil;
+import com.intellij.util.LanguageVersionUtil;
 import com.intellij.util.ObjectUtils;
 import com.intellij.util.PairProcessor;
 import com.intellij.util.ui.update.MergingUpdateQueue;
 import com.intellij.util.ui.update.Update;
+import org.intellij.grammar.BnfFileType;
+import org.intellij.grammar.parser.GeneratedParserUtilBase;
+import org.intellij.grammar.psi.BnfExpression;
+import org.intellij.grammar.psi.BnfFile;
+import org.intellij.grammar.psi.BnfRule;
+import org.jetbrains.annotations.Nullable;
+
+import javax.swing.*;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * @author gregsh
@@ -181,7 +174,7 @@ public class LivePreviewHelper {
   public static boolean collectExpressionsAtOffset(Project project, Editor previewEditor, LivePreviewLanguage language, final PairProcessor<BnfExpression, Boolean> processor) {
     Lexer lexer = new LivePreviewLexer(project, language);
     final ParserDefinition parserDefinition = LanguageParserDefinitions.INSTANCE.forLanguage(language);
-    final PsiBuilder builder = PsiBuilderFactory.getInstance().createBuilder(parserDefinition, lexer, Language.UNKNOWN_VERSION, previewEditor.getDocument().getText());
+    final PsiBuilder builder = PsiBuilderFactory.getInstance().createBuilder(parserDefinition, lexer, LanguageVersionUtil.findDefaultVersion(language), previewEditor.getDocument().getText());
     final int caretOffset = previewEditor.getCaretModel().getOffset();
     final PsiParser parser = new LivePreviewParser(project, language) {
       @Override
@@ -213,7 +206,7 @@ public class LivePreviewHelper {
 
     };
     try {
-      parser.parse(parserDefinition.getFileNodeType(), builder, Language.UNKNOWN_VERSION);
+      parser.parse(parserDefinition.getFileNodeType(), builder, LanguageVersionUtil.findDefaultVersion(language));
       return true;
     }
     catch (ProcessCanceledException e) {
