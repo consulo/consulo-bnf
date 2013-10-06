@@ -16,6 +16,21 @@
 
 package org.intellij.grammar.refactor;
 
+import gnu.trove.TObjectIntHashMap;
+
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.intellij.grammar.generator.ParserGeneratorUtil;
+import org.intellij.grammar.psi.BnfExpression;
+import org.intellij.grammar.psi.BnfExternalExpression;
+import org.intellij.grammar.psi.BnfModifier;
+import org.intellij.grammar.psi.BnfRule;
+import org.intellij.grammar.psi.BnfSequence;
+import org.intellij.grammar.psi.impl.BnfElementFactory;
+import org.intellij.grammar.psi.impl.GrammarUtil;
+import org.jetbrains.annotations.NotNull;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Pair;
@@ -25,20 +40,10 @@ import com.intellij.psi.PsiReference;
 import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.refactoring.BaseRefactoringProcessor;
-import com.intellij.refactoring.util.RefactoringUtil;
+import com.intellij.refactoring.util.CommonRefactoringUtil;
 import com.intellij.usageView.UsageInfo;
 import com.intellij.usageView.UsageViewDescriptor;
 import com.intellij.util.IncorrectOperationException;
-import gnu.trove.TObjectIntHashMap;
-import org.intellij.grammar.generator.ParserGeneratorUtil;
-import org.intellij.grammar.psi.*;
-import org.intellij.grammar.psi.impl.BnfElementFactory;
-import org.intellij.grammar.psi.impl.GrammarUtil;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * Created by IntelliJ IDEA.
@@ -91,7 +96,7 @@ public class BnfInlineRuleProcessor extends BaseRefactoringProcessor {
     boolean meta = ParserGeneratorUtil.Rule.isMeta(myRule);
     LOG.assertTrue(expression != null);
 
-    RefactoringUtil.sortDepthFirstRightLeftOrder(usages);
+	CommonRefactoringUtil.sortDepthFirstRightLeftOrder(usages);
     for (UsageInfo info : usages) {
       try {
         final BnfExpression element = (BnfExpression)info.getElement();
