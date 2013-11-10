@@ -7,11 +7,11 @@ import org.intellij.grammar.inspection.BnfIdenticalChoiceBranchesInspection;
 import org.intellij.grammar.inspection.BnfLeftRecursionInspection;
 import org.intellij.grammar.inspection.BnfSuspiciousTokenInspection;
 import org.intellij.grammar.inspection.BnfUnreachableChoiceBranchInspection;
+import org.mustbe.consulo.roots.impl.ProductionContentFolderTypeProvider;
 import com.intellij.openapi.application.AccessToken;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.roots.ContentEntry;
-import com.intellij.openapi.roots.ContentFolderType;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.util.io.FileUtil;
@@ -56,8 +56,8 @@ public class BnfInspectionTest extends LightPlatformCodeInsightFixtureTestCase {
       String supportUrl = getUrl(testDataPath + "/../../support");
       String genUrl = getUrl(testDataPath + "/../../gen");
       if (add) {
-        model.addContentEntry(supportUrl).addFolder(supportUrl, ContentFolderType.SOURCE);
-        model.addContentEntry(genUrl).addFolder(genUrl, ContentFolderType.SOURCE);
+        model.addContentEntry(supportUrl).addFolder(supportUrl, ProductionContentFolderTypeProvider.getInstance());
+        model.addContentEntry(genUrl).addFolder(genUrl, ProductionContentFolderTypeProvider.getInstance());
       }
       else {
         for (ContentEntry entry : model.getContentEntries()) {
