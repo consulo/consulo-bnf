@@ -15,164 +15,211 @@
  */
 package org.intellij.grammar;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.Icon;
+
+import org.intellij.grammar.psi.BnfAttr;
+import org.intellij.grammar.psi.BnfAttrPattern;
+import org.intellij.grammar.psi.BnfAttrs;
+import org.intellij.grammar.psi.BnfExpression;
+import org.intellij.grammar.psi.BnfFile;
+import org.intellij.grammar.psi.BnfRule;
+import org.intellij.grammar.psi.BnfValueList;
+import org.intellij.grammar.psi.impl.BnfFileImpl;
+import org.jetbrains.annotations.NotNull;
 import com.intellij.ide.IconDescriptorUpdaters;
-import com.intellij.ide.structureView.*;
+import com.intellij.ide.structureView.StructureViewBuilder;
+import com.intellij.ide.structureView.StructureViewModel;
+import com.intellij.ide.structureView.StructureViewModelBase;
+import com.intellij.ide.structureView.StructureViewTreeElement;
+import com.intellij.ide.structureView.TreeBasedStructureViewBuilder;
 import com.intellij.ide.util.treeView.smartTree.TreeElement;
 import com.intellij.lang.PsiStructureViewFactory;
 import com.intellij.navigation.ItemPresentation;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.pom.Navigatable;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiNamedElement;
 import com.intellij.util.containers.ContainerUtil;
-import org.intellij.grammar.psi.*;
-import org.intellij.grammar.psi.impl.BnfFileImpl;
-import org.jetbrains.annotations.NotNull;
-
-import javax.swing.*;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author gregsh
  */
-public class BnfStructureViewFactory implements PsiStructureViewFactory {
-  public StructureViewBuilder getStructureViewBuilder(final PsiFile psiFile) {
-    return new TreeBasedStructureViewBuilder() {
-      @NotNull
-      public StructureViewModel createStructureViewModel() {
-        return new Model(psiFile);
-      }
+public class BnfStructureViewFactory implements PsiStructureViewFactory
+{
+	public StructureViewBuilder getStructureViewBuilder(final PsiFile psiFile)
+	{
+		return new TreeBasedStructureViewBuilder()
+		{
+			@NotNull
+			public StructureViewModel createStructureViewModel(Editor editor)
+			{
+				return new Model(psiFile);
+			}
 
-      @Override
-      public boolean isRootNodeShown() {
-        return false;
-      }
-    };
-  }
+			@Override
+			public boolean isRootNodeShown()
+			{
+				return false;
+			}
+		};
+	}
 
-  public static class Model extends StructureViewModelBase implements StructureViewModel.ElementInfoProvider {
+	public static class Model extends StructureViewModelBase implements StructureViewModel.ElementInfoProvider
+	{
 
-    protected Model(@NotNull PsiFile psiFile) {
-      super(psiFile, new Element(psiFile));
-      withSuitableClasses(BnfRule.class, BnfAttrs.class, BnfAttr.class);
-    }
+		protected Model(@NotNull PsiFile psiFile)
+		{
+			super(psiFile, new Element(psiFile));
+			withSuitableClasses(BnfRule.class, BnfAttrs.class, BnfAttr.class);
+		}
 
 
-    @Override
-    public boolean isAlwaysShowsPlus(StructureViewTreeElement element) {
-      return false;
-    }
+		@Override
+		public boolean isAlwaysShowsPlus(StructureViewTreeElement element)
+		{
+			return false;
+		}
 
-    @Override
-    public boolean isAlwaysLeaf(StructureViewTreeElement element) {
-      final Object value = element.getValue();
-      return !(value instanceof BnfRule);
-    }
+		@Override
+		public boolean isAlwaysLeaf(StructureViewTreeElement element)
+		{
+			final Object value = element.getValue();
+			return !(value instanceof BnfRule);
+		}
 
-    @Override
-    public boolean shouldEnterElement(Object element) {
-      return false;
-    }
+		@Override
+		public boolean shouldEnterElement(Object element)
+		{
+			return false;
+		}
 
-    @Override
-    protected boolean isSuitable(PsiElement element) {
-      return element instanceof BnfAttrs || element instanceof BnfRule;
-    }
-  }
+		@Override
+		protected boolean isSuitable(PsiElement element)
+		{
+			return element instanceof BnfAttrs || element instanceof BnfRule;
+		}
+	}
 
-  public static class Element implements StructureViewTreeElement, ItemPresentation {
+	public static class Element implements StructureViewTreeElement, ItemPresentation
+	{
 
-    private final PsiElement myElement;
+		private final PsiElement myElement;
 
-    public Element(PsiElement element) {
-      this.myElement = element;
-    }
+		public Element(PsiElement element)
+		{
+			this.myElement = element;
+		}
 
-    @Override
-    public Object getValue() {
-      return myElement;
-    }
+		@Override
+		public Object getValue()
+		{
+			return myElement;
+		}
 
-    @Override
-    public void navigate(boolean requestFocus) {
-      ((Navigatable)myElement).navigate(requestFocus);
-    }
+		@Override
+		public void navigate(boolean requestFocus)
+		{
+			((Navigatable) myElement).navigate(requestFocus);
+		}
 
-    @Override
-    public boolean canNavigate() {
-      return ((Navigatable)myElement).canNavigate();
-    }
+		@Override
+		public boolean canNavigate()
+		{
+			return ((Navigatable) myElement).canNavigate();
+		}
 
-    @Override
-    public boolean canNavigateToSource() {
-      return ((Navigatable)myElement).canNavigateToSource();
-    }
+		@Override
+		public boolean canNavigateToSource()
+		{
+			return ((Navigatable) myElement).canNavigateToSource();
+		}
 
-    @Override
-    public ItemPresentation getPresentation() {
-      return this;
-    }
+		@Override
+		public ItemPresentation getPresentation()
+		{
+			return this;
+		}
 
-    @Override
-    public TreeElement[] getChildren() {
-      if (myElement instanceof BnfRule
-          || myElement instanceof BnfAttr) {
-        return EMPTY_ARRAY;
-      }
-      final ArrayList<TreeElement> result = new ArrayList<TreeElement>();
-      if (myElement instanceof BnfFile) {
-        for (BnfAttrs o : ((BnfFile)myElement).getAttributes()) {
-          result.add(new Element(o));
-        }
-        for (BnfRule o : ((BnfFile)myElement).getRules()) {
-          result.add(new Element(o));
-        }
-      }
-      else if (myElement instanceof BnfAttrs) {
-        for (BnfAttr o : ((BnfAttrs)myElement).getAttrList()) {
-          result.add(new Element(o));
-        }
-      }
-      return result.toArray(new TreeElement[result.size()]);
-    }
+		@Override
+		public TreeElement[] getChildren()
+		{
+			if(myElement instanceof BnfRule || myElement instanceof BnfAttr)
+			{
+				return EMPTY_ARRAY;
+			}
+			final ArrayList<TreeElement> result = new ArrayList<TreeElement>();
+			if(myElement instanceof BnfFile)
+			{
+				for(BnfAttrs o : ((BnfFile) myElement).getAttributes())
+				{
+					result.add(new Element(o));
+				}
+				for(BnfRule o : ((BnfFile) myElement).getRules())
+				{
+					result.add(new Element(o));
+				}
+			}
+			else if(myElement instanceof BnfAttrs)
+			{
+				for(BnfAttr o : ((BnfAttrs) myElement).getAttrList())
+				{
+					result.add(new Element(o));
+				}
+			}
+			return result.toArray(new TreeElement[result.size()]);
+		}
 
-    @Override
-    public String getPresentableText() {
-      if (myElement instanceof BnfRule) {
-        return ((PsiNamedElement)myElement).getName();
-      }
-      else if (myElement instanceof BnfAttr) {
-        return getAttrDisplayName((BnfAttr)myElement);
-      }
-      else if (myElement instanceof BnfAttrs) {
-        List<BnfAttr> attrList = ((BnfAttrs)myElement).getAttrList();
-        final BnfAttr firstAttr = ContainerUtil.getFirstItem(attrList);
-        if (firstAttr == null) return "Attributes { <empty> }";
-        String suffix = attrList.size() > 1? " & " + attrList.size()+" more..." : " ";
-        return "Attributes { " + getAttrDisplayName(firstAttr) + suffix+ "}";
-      }
-      else if (myElement instanceof BnfFileImpl) {
-        return ((BnfFileImpl)myElement).getName();
-      }
-      throw new AssertionError(myElement.getClass().getName());
-    }
+		@Override
+		public String getPresentableText()
+		{
+			if(myElement instanceof BnfRule)
+			{
+				return ((PsiNamedElement) myElement).getName();
+			}
+			else if(myElement instanceof BnfAttr)
+			{
+				return getAttrDisplayName((BnfAttr) myElement);
+			}
+			else if(myElement instanceof BnfAttrs)
+			{
+				List<BnfAttr> attrList = ((BnfAttrs) myElement).getAttrList();
+				final BnfAttr firstAttr = ContainerUtil.getFirstItem(attrList);
+				if(firstAttr == null)
+				{
+					return "Attributes { <empty> }";
+				}
+				String suffix = attrList.size() > 1 ? " & " + attrList.size() + " more..." : " ";
+				return "Attributes { " + getAttrDisplayName(firstAttr) + suffix + "}";
+			}
+			else if(myElement instanceof BnfFileImpl)
+			{
+				return ((BnfFileImpl) myElement).getName();
+			}
+			throw new AssertionError(myElement.getClass().getName());
+		}
 
-    private static String getAttrDisplayName(BnfAttr attr) {
-      final BnfAttrPattern attrPattern = attr.getAttrPattern();
-      final BnfExpression attrValue = attr.getExpression();
-      String attrValueText = attrValue == null? "" : attrValue instanceof BnfValueList? "[ ... ]" : attrValue.getText();
-      return attr.getName() + (attrPattern == null ? "" : attrPattern.getText()) + " = " + attrValueText;
-    }
+		private static String getAttrDisplayName(BnfAttr attr)
+		{
+			final BnfAttrPattern attrPattern = attr.getAttrPattern();
+			final BnfExpression attrValue = attr.getExpression();
+			String attrValueText = attrValue == null ? "" : attrValue instanceof BnfValueList ? "[ ... ]" : attrValue.getText();
+			return attr.getName() + (attrPattern == null ? "" : attrPattern.getText()) + " = " + attrValueText;
+		}
 
-    @Override
-    public String getLocationString() {
-      return null;
-    }
+		@Override
+		public String getLocationString()
+		{
+			return null;
+		}
 
-    @Override
-    public Icon getIcon(boolean open) {
-      return IconDescriptorUpdaters.getIcon(myElement, 0);
-    }
-  }
+		@Override
+		public Icon getIcon(boolean open)
+		{
+			return IconDescriptorUpdaters.getIcon(myElement, 0);
+		}
+	}
 }
