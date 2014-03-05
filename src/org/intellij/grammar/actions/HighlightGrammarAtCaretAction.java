@@ -16,6 +16,13 @@
 
 package org.intellij.grammar.actions;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import org.intellij.grammar.livePreview.LivePreviewHelper;
+import org.intellij.grammar.livePreview.LivePreviewLanguage;
+import org.intellij.grammar.psi.BnfExpression;
+import org.jetbrains.annotations.NotNull;
 import com.intellij.codeInsight.highlighting.HighlightManager;
 import com.intellij.codeInsight.highlighting.HighlightManagerImpl;
 import com.intellij.lang.Language;
@@ -28,6 +35,7 @@ import com.intellij.openapi.application.ex.ApplicationManagerEx;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.colors.EditorColors;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.intellij.openapi.editor.event.CaretAdapter;
 import com.intellij.openapi.editor.event.CaretEvent;
 import com.intellij.openapi.editor.event.CaretListener;
 import com.intellij.openapi.editor.markup.TextAttributes;
@@ -43,13 +51,6 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.PairProcessor;
 import com.intellij.util.ui.UIUtil;
 import com.intellij.util.ui.update.Update;
-import org.intellij.grammar.livePreview.LivePreviewHelper;
-import org.intellij.grammar.livePreview.LivePreviewLanguage;
-import org.intellij.grammar.psi.BnfExpression;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * @author gregsh
@@ -95,7 +96,7 @@ public class HighlightGrammarAtCaretAction extends AnAction {
     else {
       updateGrammarHighlighters(project, editor, livePreviewLanguage, grammarEditor);
 
-      caretListener = new CaretListener() {
+      caretListener = new CaretAdapter() {
         @Override
         public void caretPositionChanged(final CaretEvent e) {
           final CaretListener caretListener = this;
