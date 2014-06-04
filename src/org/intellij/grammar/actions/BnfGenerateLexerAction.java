@@ -30,8 +30,8 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.fileChooser.FileChooserFactory;
 import com.intellij.openapi.fileChooser.FileSaverDescriptor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.fileTypes.FileTypes;
-import com.intellij.openapi.fileTypes.StdFileTypes;
+import com.intellij.openapi.fileTypes.PlainTextFileType;
+import com.intellij.openapi.fileTypes.UnknownFileType;
 import com.intellij.openapi.fileTypes.ex.FileTypeManagerEx;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
@@ -117,8 +117,8 @@ public class BnfGenerateLexerAction extends AnAction {
   private static void associateFileTypeAndNavigate(Project project, VirtualFile virtualFile) {
     String extension = virtualFile.getExtension();
     FileTypeManagerEx fileTypeManagerEx = FileTypeManagerEx.getInstanceEx();
-    if (extension != null && fileTypeManagerEx.getFileTypeByExtension(extension) == FileTypes.UNKNOWN) {
-      fileTypeManagerEx.associateExtension(StdFileTypes.PLAIN_TEXT, "flex");
+    if (extension != null && fileTypeManagerEx.getFileTypeByExtension(extension) == UnknownFileType.INSTANCE) {
+      fileTypeManagerEx.associateExtension(PlainTextFileType.INSTANCE, "flex");
     }
     FileEditorManager.getInstance(project).openFile(virtualFile, false, true);
     //new OpenFileDescriptor(project, virtualFile).navigate(false);
