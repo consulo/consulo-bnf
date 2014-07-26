@@ -415,7 +415,7 @@ public class ExpressionHelper
 		for(int i = startIndex, childExpressionsSize = childExpressions.size(); i < childExpressionsSize; i++)
 		{
 			BnfRule rule = myFile.getRule(childExpressions.get(i).getText());
-			if(rootRule == rule || extendsRules.contains(rule) || expressionInfo.privateGroups.contains(rule))
+			if(rootRule == rule || rule != null && extendsRules.contains(rule) || expressionInfo.privateGroups.contains(rule))
 			{
 				return i;
 			}
