@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-2014 Gregory Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,6 @@ import org.jetbrains.annotations.Nullable;
 import com.intellij.lang.Language;
 import com.intellij.openapi.util.Condition;
 import com.intellij.openapi.util.Key;
-import com.intellij.openapi.util.Pair;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.tree.IElementType;
@@ -76,7 +75,7 @@ public class RuleGraphHelper
 		@Override
 		public int computeHashCode(PsiElement e)
 		{
-			if(e instanceof BnfReferenceOrToken)
+			if(e instanceof BnfReferenceOrToken || e instanceof BnfLiteralExpression)
 			{
 				return e.getText().hashCode();
 			}
@@ -86,7 +85,8 @@ public class RuleGraphHelper
 		@Override
 		public boolean equals(PsiElement e1, PsiElement e2)
 		{
-			if(e1 instanceof BnfReferenceOrToken && e2 instanceof BnfReferenceOrToken)
+			if(e1 instanceof BnfReferenceOrToken && e2 instanceof BnfReferenceOrToken || e1 instanceof BnfLiteralExpression && e2 instanceof
+					BnfLiteralExpression)
 			{
 				return e1.getText().equals(e2.getText());
 			}
@@ -268,25 +268,17 @@ public class RuleGraphHelper
 				@Override
 				public Result<Map<String, String>> compute()
 				{
-					return new Result<Map<String, String>>(computeTokens(file), file);
+					return new Result<Map<String, String>>(computeTokens(file).asInverseMap(), file);
 				}
 			}, false));
 		}
 		return value.getValue();
 	}
 
-	public static Map<String, String> computeTokens(BnfFile file)
+	// string value to constant name
+	public static KnownAttribute.ListValue computeTokens(BnfFile file)
 	{
-		Map<String, String> result = new LinkedHashMap<String, String>();
-		for(Pair<String, String> pair : getRootAttribute(file, KnownAttribute.TOKENS))
-		{
-			if(pair.first == null || pair.second == null)
-			{
-				continue;
-			}
-			result.put(pair.second, pair.first); // string value to constant name
-		}
-		return result;
+		return getRootAttribute(file, KnownAttribute.TOKENS);
 	}
 
 	private static final Key<CachedValue<RuleGraphHelper>> RULE_GRAPH_HELPER_KEY = Key.create("RULE_GRAPH_HELPER_KEY");
@@ -296,7 +288,8 @@ public class RuleGraphHelper
 		CachedValue<RuleGraphHelper> value = file.getUserData(RULE_GRAPH_HELPER_KEY);
 		if(value == null)
 		{
-			file.putUserData(RULE_GRAPH_HELPER_KEY, value = CachedValuesManager.getManager(file.getProject()).createCachedValue(new CachedValueProvider<RuleGraphHelper>()
+			file.putUserData(RULE_GRAPH_HELPER_KEY, value = CachedValuesManager.getManager(file.getProject()).createCachedValue(new
+																																		CachedValueProvider<RuleGraphHelper>()
 			{
 				@Nullable
 				@Override
@@ -336,6 +329,11 @@ public class RuleGraphHelper
 	public MultiMap<BnfRule, BnfRule> getRuleExtendsMap()
 	{
 		return myRuleExtendsMap;
+	}
+
+	public BnfFile getFile()
+	{
+		return myFile;
 	}
 
 	private void buildContentsMap()
@@ -771,9 +769,12 @@ public class RuleGraphHelper
 					map.put(t, joinedCard);
 				}
 			}
-			if(checkInheritance && map.size() == 1 && collapseNode(rule, map.keySet().iterator().next()))
+			if(checkInheritance && map.size() == 1 && ContainerUtil.getFirstItem(map.values()) == REQUIRED)
 			{
-				return Collections.emptyMap();
+				if(collapseNode(rule, ContainerUtil.getFirstItem(map.keySet())))
+				{
+					return Collections.emptyMap();
+				}
 			}
 			return map;
 		}
@@ -968,7 +969,7 @@ public class RuleGraphHelper
 			{
 				max = count;
 			}
-			else if(!changed)
+			else
 			{
 				it.remove();
 			}
