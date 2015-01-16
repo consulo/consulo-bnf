@@ -59,7 +59,7 @@ public class BnfGeneratorTest extends ParsingTestCase {
     registerApplicationService(JobLauncher.class, new JobLauncherImpl());
     registerApplicationService(AsyncFutureFactory.class, new AsyncFutureFactoryImpl());
     getProject().registerService(PsiSearchHelper.class, new PsiSearchHelperImpl(getPsiManager()));
-    getProject().registerService(DumbService.class, new DumbServiceImpl(getProject(), getProject().getMessageBus()));
+    getProject().registerService(DumbService.class, new DumbServiceImpl(getProject()));
     getProject().registerService(PsiFileFactory.class, new PsiFileFactoryImpl(getPsiManager()));
     getProject().registerService(ResolveCache.class, new ResolveCache(getProject().getMessageBus()));
     InjectedLanguageManagerImpl languageManager = new InjectedLanguageManagerImpl(getProject(), DumbService.getInstance(getProject()));

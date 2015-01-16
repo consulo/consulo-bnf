@@ -16,6 +16,18 @@
 
 package org.intellij.grammar;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.intellij.grammar.java.JavaHelper;
+import org.jetbrains.annotations.NonNls;
 import com.intellij.concurrency.AsyncFutureFactory;
 import com.intellij.concurrency.AsyncFutureFactoryImpl;
 import com.intellij.concurrency.JobLauncher;
@@ -40,14 +52,6 @@ import com.intellij.psi.impl.source.resolve.ResolveCache;
 import com.intellij.psi.impl.source.tree.injected.InjectedLanguageManagerImpl;
 import com.intellij.psi.search.PsiSearchHelper;
 import com.intellij.testFramework.ParsingTestCase;
-import org.intellij.grammar.java.JavaHelper;
-import org.jetbrains.annotations.NonNls;
-
-import java.io.*;
-import java.util.jar.JarEntry;
-import java.util.jar.JarOutputStream;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * @author greg
@@ -121,7 +125,7 @@ public class LightPsi {
       registerApplicationService(JobLauncher.class, new JobLauncherImpl());
       registerApplicationService(AsyncFutureFactory.class, new AsyncFutureFactoryImpl());
       getProject().registerService(PsiSearchHelper.class, new PsiSearchHelperImpl(getPsiManager()));
-      getProject().registerService(DumbService.class, new DumbServiceImpl(getProject(), getProject().getMessageBus()));
+      getProject().registerService(DumbService.class, new DumbServiceImpl(getProject()));
       getProject().registerService(ResolveCache.class, new ResolveCache(getProject().getMessageBus()));
       getProject().registerService(PsiFileFactory.class, new PsiFileFactoryImpl(getPsiManager()));
       try {
