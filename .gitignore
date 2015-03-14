@@ -1,5 +1,4 @@
-.idea/workspace
-out/
-/.idea/workspace.xml
-
 /.consulo/workspace.xml
+/dep
+/.consulo/sandbox
+/out
