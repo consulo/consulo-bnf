@@ -78,7 +78,7 @@ public class LivePreviewParser implements PsiParser
 
 	private final BnfFile myFile;
 	private final LivePreviewLanguage myLanguage;
-	private Map<String, String> mySimpleTokens;
+	private Map<String, String> mySimpleTokens = Collections.emptyMap();
 	private BnfRule myGrammarRoot;
 	private final Map<String, IElementType> myElementTypes = new THashMap<String, IElementType>();
 	private RuleGraphHelper myGraphHelper;
