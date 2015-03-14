@@ -6,6 +6,7 @@
         <element id="directory" name="lib">
           <element id="zip-archive" name="bnf.jar">
             <element id="module-output" name="consulo-bnf" />
+            <element id="module-production-resource-output" name="consulo-bnf" />
           </element>
         </element>
       </element>
