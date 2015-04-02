@@ -793,7 +793,7 @@ public class LivePreviewParser implements PsiParser
 
 		RuleElementType(String elementType, BnfRule rule, Language language)
 		{
-			super(elementType, language, null, false);
+			super(elementType, language, false);
 			this.rule = rule;
 		}
 

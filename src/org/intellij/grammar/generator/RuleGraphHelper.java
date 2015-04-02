@@ -100,10 +100,10 @@ public class RuleGraphHelper
 	private final Set<BnfRule> myRulesWithTokens = new THashSet<BnfRule>();
 	private final Map<String, PsiElement> myExternalElements = new THashMap<String, PsiElement>();
 
-	private static final LeafPsiElement LEFT_MARKER = new LeafPsiElement(new IElementType("LEFT_MARKER", Language.ANY, null, false)
+	private static final LeafPsiElement LEFT_MARKER = new LeafPsiElement(new IElementType("LEFT_MARKER", Language.ANY, false)
 	{
 	}, "LEFT_MARKER");
-	private static final IElementType EXTERNAL_TYPE = new IElementType("EXTERNAL_TYPE", Language.ANY, null, false)
+	private static final IElementType EXTERNAL_TYPE = new IElementType("EXTERNAL_TYPE", Language.ANY, false)
 	{
 	};
 

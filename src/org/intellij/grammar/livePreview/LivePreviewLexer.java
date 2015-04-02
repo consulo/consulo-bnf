@@ -206,7 +206,7 @@ public class LivePreviewLexer extends LexerBase {
       else if (StringUtil.endsWithIgnoreCase(tokenName, "number")) tokenType = LivePreviewParserDefinition.NUMBER;
       else if (StringUtil.endsWithIgnoreCase(tokenName, "integer")) tokenType = LivePreviewParserDefinition.NUMBER;
       else if (keyword) tokenType = new KeywordTokenType(tokenName, language);
-      else tokenType = new IElementType(tokenName, language, null,false) {};
+      else tokenType = new IElementType(tokenName, language, false) {};
     }
 
     Token(String pattern, IElementType tokenType) {
@@ -264,7 +264,7 @@ public class LivePreviewLexer extends LexerBase {
 
   static class KeywordTokenType extends IElementType {
     KeywordTokenType(String name, Language language) {
-      super(name, language, null, false);
+      super(name, language, false);
     }
   }
 }
