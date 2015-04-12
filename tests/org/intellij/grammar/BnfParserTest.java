@@ -1,29 +1,20 @@
 package org.intellij.grammar;
 
-import com.intellij.lang.LanguageBraceMatching;
-import com.intellij.lang.LanguageParserDefinitions;
-import com.intellij.testFramework.ParsingTestCase;
-import org.jetbrains.annotations.NonNls;
-
 import java.io.IOException;
+
+import org.jetbrains.annotations.NonNls;
+import com.intellij.testFramework.ParsingTestCase;
 
 /**
  * @author gregsh
  */
 public class BnfParserTest extends ParsingTestCase {
   public BnfParserTest() {
-    super("parser", "bnf", new BnfParserDefinition());
+    super("parser", "bnf");
   }
-
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
-    addExplicitExtension(LanguageBraceMatching.INSTANCE, myLanguage, new BnfBraceMatcher());
-  }
-
   @Override
   protected String getTestDataPath() {
-    return "testData";
+    return "/testData";
   }
 
   public void testBnfGrammar() { doTest(true); }
