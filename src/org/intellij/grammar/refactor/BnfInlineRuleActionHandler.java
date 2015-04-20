@@ -16,7 +16,13 @@
 
 package org.intellij.grammar.refactor;
 
-import com.intellij.codeInsight.TargetElementUtilBase;
+import java.util.Collection;
+
+import org.intellij.grammar.BnfLanguage;
+import org.intellij.grammar.psi.BnfAttr;
+import org.intellij.grammar.psi.BnfAttrs;
+import org.intellij.grammar.psi.BnfRule;
+import com.intellij.codeInsight.TargetElementUtil;
 import com.intellij.lang.Language;
 import com.intellij.lang.refactoring.InlineActionHandler;
 import com.intellij.openapi.editor.Editor;
@@ -26,12 +32,6 @@ import com.intellij.psi.PsiReference;
 import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.refactoring.util.CommonRefactoringUtil;
-import org.intellij.grammar.BnfLanguage;
-import org.intellij.grammar.psi.BnfAttr;
-import org.intellij.grammar.psi.BnfAttrs;
-import org.intellij.grammar.psi.BnfRule;
-
-import java.util.Collection;
 
 /**
  * Created by IntelliJ IDEA.
@@ -78,7 +78,7 @@ public class BnfInlineRuleActionHandler extends InlineActionHandler {
       }
     }
     if (!CommonRefactoringUtil.checkReadOnlyStatus(project, rule)) return;
-    PsiReference reference = editor != null ? TargetElementUtilBase.findReference(editor, editor.getCaretModel().getOffset()) : null;
+    PsiReference reference = editor != null ? TargetElementUtil.findReference(editor, editor.getCaretModel().getOffset()) : null;
     if (reference != null && !rule.equals(reference.resolve())) {
       reference = null;
     }
