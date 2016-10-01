@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,6 @@
  */
 package org.intellij.grammar;
 
-import org.intellij.grammar.psi.BnfAttr;
-import org.intellij.grammar.psi.BnfCompositeElement;
-import org.intellij.grammar.psi.BnfRule;
-import org.intellij.grammar.util.NameUtil;
-import org.jetbrains.annotations.NotNull;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.ElementDescriptionLocation;
 import com.intellij.psi.ElementDescriptionProvider;
@@ -29,6 +24,11 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.usageView.UsageViewNodeTextLocation;
 import com.intellij.usageView.UsageViewShortNameLocation;
 import com.intellij.usageView.UsageViewTypeLocation;
+import org.apache.xmlbeans.impl.common.NameUtil;
+import org.intellij.grammar.psi.BnfAttr;
+import org.intellij.grammar.psi.BnfCompositeElement;
+import org.intellij.grammar.psi.BnfRule;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * @author gregory
@@ -45,14 +45,14 @@ public class BnfDescriptionProvider implements ElementDescriptionProvider {
       if (location == UsageViewTypeLocation.INSTANCE) {
         return "Grammar Rule";
       }
-      return ((BnfRule)psiElement).getId().getText();
+      return ((BnfRule)psiElement).getName();
     }
     else if (psiElement instanceof BnfAttr) {
       if (location == UsageViewTypeLocation.INSTANCE) {
         BnfRule rule = PsiTreeUtil.getParentOfType(psiElement, BnfRule.class);
         return (rule == null ? "Grammar " : "Rule ") + "Attribute";
       }
-      return ((BnfAttr)psiElement).getId().getText();
+      return ((BnfAttr)psiElement).getName();
     }
     else if (psiElement instanceof BnfCompositeElement) {
       if (location == UsageViewTypeLocation.INSTANCE) {

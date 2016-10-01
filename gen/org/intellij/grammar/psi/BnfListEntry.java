@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2011 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,12 +23,12 @@ import com.intellij.psi.PsiReference;
 public interface BnfListEntry extends BnfCompositeElement {
 
   @Nullable
-  BnfStringLiteralExpression getLiteralExpression();
-
-  @Nullable
   PsiElement getId();
 
   @NotNull
   PsiReference[] getReferences();
+
+  @Nullable
+  BnfStringLiteralExpression getLiteralExpression();
 
 }

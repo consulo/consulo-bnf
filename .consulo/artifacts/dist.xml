@@ -2,9 +2,9 @@
   <artifact build-on-make="true" name="dist">
     <output-path>$PROJECT_DIR$/out/artifacts/dist</output-path>
     <root id="root">
-      <element id="directory" name="bnf">
+      <element id="directory" name="org.jetbrains.idea.grammar">
         <element id="directory" name="lib">
-          <element id="zip-archive" name="bnf.jar">
+          <element id="zip-archive" name="org.jetbrains.idea.grammar.jar">
             <element id="module-output" name="consulo-bnf" />
             <element id="module-production-resource-output" name="consulo-bnf" />
           </element>

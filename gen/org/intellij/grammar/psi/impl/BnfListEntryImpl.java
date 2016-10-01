@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2011 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,15 +31,13 @@ public class BnfListEntryImpl extends BnfCompositeElementImpl implements BnfList
     super(node);
   }
 
-  public void accept(@NotNull PsiElementVisitor visitor) {
-    if (visitor instanceof BnfVisitor) ((BnfVisitor)visitor).visitListEntry(this);
-    else super.accept(visitor);
+  public <R> R accept(@NotNull BnfVisitor<R> visitor) {
+    return visitor.visitListEntry(this);
   }
 
-  @Override
-  @Nullable
-  public BnfStringLiteralExpression getLiteralExpression() {
-    return findChildByClass(BnfStringLiteralExpression.class);
+  public void accept(@NotNull PsiElementVisitor visitor) {
+    if (visitor instanceof BnfVisitor) accept((BnfVisitor)visitor);
+    else super.accept(visitor);
   }
 
   @Override
@@ -51,6 +49,12 @@ public class BnfListEntryImpl extends BnfCompositeElementImpl implements BnfList
   @NotNull
   public PsiReference[] getReferences() {
     return GrammarPsiImplUtil.getReferences(this);
+  }
+
+  @Override
+  @Nullable
+  public BnfStringLiteralExpression getLiteralExpression() {
+    return findChildByClass(BnfStringLiteralExpression.class);
   }
 
 }

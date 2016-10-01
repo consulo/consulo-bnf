@@ -7,19 +7,14 @@ import static org.intellij.grammar.BnfParserDefinition.BNF_BLOCK_COMMENT;
 
 %%
 
-%{
-  public _BnfLexer() {
-    this((java.io.Reader)null);
-  }
-%}
-
 %public
-%class _BnfLexer
-%implements FlexLexer
-%function advance
+%class BnfLexer
+%extends LexerBase
+%function advanceImpl
 %type IElementType
 %unicode
-%eof{ return;
+%eof{
+  return;
 %eof}
 
 EOL="\r"|"\n"|"\r\n"
@@ -31,7 +26,7 @@ BLOCK_COMMENT="/*" !([^]* "*/" [^]*) ("*/")?
 ALPHA=[:letter:]
 DIGIT=[:digit:]
 
-ID_BODY={ALPHA} | {DIGIT} | "_"
+ID_BODY={ALPHA} | {DIGIT} | "_" | "-"
 ID={ALPHA} ({ID_BODY}) * | "<" ([^<>])+ ">"
 HEX={DIGIT} | [aAbBcCdDeEfF]
 NUMBER={DIGIT}+ | "0x" {HEX}+
@@ -76,8 +71,8 @@ BAD_TOKENS={STRING_BAD1} | {STRING_BAD2}
   "&" {yybegin(YYINITIAL); return BnfTypes.BNF_OP_AND; }
   "!" {yybegin(YYINITIAL); return BnfTypes.BNF_OP_NOT; }
   "|" {yybegin(YYINITIAL); return BnfTypes.BNF_OP_OR; }
-
-  {BAD_TOKENS} {yybegin(YYINITIAL); return com.intellij.psi.TokenType.BAD_CHARACTER; }
-  [^] {yybegin(YYINITIAL); return com.intellij.psi.TokenType.BAD_CHARACTER; }
-
 }
+
+{BAD_TOKENS} {yybegin(YYINITIAL); return com.intellij.psi.TokenType.BAD_CHARACTER; }
+
+[^] {yybegin(YYINITIAL); return com.intellij.psi.TokenType.BAD_CHARACTER; }

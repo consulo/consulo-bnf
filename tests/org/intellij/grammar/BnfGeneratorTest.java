@@ -13,12 +13,13 @@ import org.jetbrains.annotations.NonNls;
 import com.intellij.openapi.util.Comparing;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.rt.execution.junit.FileComparisonFailure;
-import com.intellij.testFramework.ParsingTestCase;
+import consulo.testFramework.ParsingTestCase;
 
 /**
  * @author gregsh
  */
-public class BnfGeneratorTest extends ParsingTestCase {
+public class BnfGeneratorTest extends ParsingTestCase
+{
   public BnfGeneratorTest() {
     super("generator", "bnf");
   }
@@ -43,7 +44,6 @@ public class BnfGeneratorTest extends ParsingTestCase {
   public void testEmpty() throws Exception {
     myFile = createPsiFile("empty.bnf", "{ }");
     ParserGenerator parserGenerator = new ParserGenerator((BnfFileImpl)myFile, "", myFullDataPath);
-    parserGenerator.setUnitTestMode(true);
     parserGenerator.generate();
   }
 
@@ -69,7 +69,6 @@ public class BnfGeneratorTest extends ParsingTestCase {
     }
 
     ParserGenerator parserGenerator = new ParserGenerator((BnfFileImpl)myFile, "", myFullDataPath);
-    parserGenerator.setUnitTestMode(true);
     if (generatePsi) parserGenerator.generate();
     else parserGenerator.generateParser();
 

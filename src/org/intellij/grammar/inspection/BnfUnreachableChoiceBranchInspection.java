@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import gnu.trove.THashSet;
 import org.intellij.grammar.analysis.BnfFirstNextAnalyzer;
 import org.intellij.grammar.psi.BnfChoice;
 import org.intellij.grammar.psi.BnfExpression;
-import org.intellij.grammar.psi.BnfRule;
 import org.intellij.grammar.psi.BnfTypes;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
@@ -86,15 +85,15 @@ public class BnfUnreachableChoiceBranchInspection extends LocalInspectionTool {
   private static void checkChoice(BnfChoice choice, ProblemsHolder problemsHolder) {
     Set<BnfExpression> visited = new THashSet<BnfExpression>();
     THashSet<BnfExpression> first = new THashSet<BnfExpression>();
-    BnfFirstNextAnalyzer analyzer = new BnfFirstNextAnalyzer();
+    BnfFirstNextAnalyzer analyzer = new BnfFirstNextAnalyzer().setPredicateLookAhead(true);
     List<BnfExpression> list = choice.getExpressionList();
     for (int i = 0, listSize = list.size() - 1; i < listSize; i++) {
       BnfExpression child = list.get(i);
-      Set<String> firstSet = analyzer.asStrings(analyzer.calcFirstInner(child, first, visited));
-      if (firstSet.contains(BnfFirstNextAnalyzer.MATCHES_NOTHING)) {
+      Set<BnfExpression> firstSet = analyzer.calcFirstInner(child, first, visited);
+      if (firstSet.contains(BnfFirstNextAnalyzer.BNF_MATCHES_NOTHING)) {
         registerProblem(choice, child, "Branch is unable to match anything due to & or ! conditions", problemsHolder);
       }
-      else if (firstSet.contains(BnfFirstNextAnalyzer.MATCHES_EOF)) {
+      else if (firstSet.contains(BnfFirstNextAnalyzer.BNF_MATCHES_EOF)) {
         registerProblem(choice, child, "Branch matches empty input making the rest branches unreachable", problemsHolder);
         break;
       }

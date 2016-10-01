@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,49 +39,49 @@ import com.intellij.util.FunctionUtil;
  * @author gregsh
  */
 public class BnfRecursionLineMarkerProvider implements LineMarkerProvider {
-	@Nullable
-	@Override
-	public LineMarkerInfo getLineMarkerInfo(@NotNull PsiElement element) {
-		return null;
-	}
+  @Nullable
+  @Override
+  public LineMarkerInfo getLineMarkerInfo(@NotNull PsiElement element) {
+    return null;
+  }
 
-	@Override
-	public void collectSlowLineMarkers(@NotNull List<PsiElement> elements, @NotNull Collection<LineMarkerInfo> result) {
-		for (PsiElement element : elements) {
-			if (!(element instanceof BnfRule)) continue;
-			BnfRule rule = (BnfRule)element;
+  @Override
+  public void collectSlowLineMarkers(@NotNull List<PsiElement> elements, @NotNull Collection<LineMarkerInfo> result) {
+    for (PsiElement element : elements) {
+      if (!(element instanceof BnfRule)) continue;
+      BnfRule rule = (BnfRule)element;
 
-			ProgressManager.checkCanceled();
+      ProgressManager.checkCanceled();
 
-			RuleGraphHelper helper = RuleGraphHelper.getCached((BnfFile)rule.getContainingFile());
-			Map<PsiElement, RuleGraphHelper.Cardinality> map = helper.getFor(rule);
-			if (map.containsKey(rule)) {
-				result.add(new MyMarkerInfo(rule));
-			}
-		}
-	}
+      RuleGraphHelper helper = RuleGraphHelper.getCached((BnfFile)rule.getContainingFile());
+      Map<PsiElement, RuleGraphHelper.Cardinality> map = helper.getFor(rule);
+      if (map.containsKey(rule)) {
+        result.add(new MyMarkerInfo(rule));
+      }
+    }
+  }
 
-	private static class MyMarkerInfo extends LineMarkerInfo<BnfRule> {
-		private MyMarkerInfo(@NotNull BnfRule rule) {
-			super(rule,
-					rule.getTextRange(),
-					AllIcons.Gutter.RecursiveMethod,
-					Pass.UPDATE_OVERRIDEN_MARKERS,
-					FunctionUtil.<BnfRule, String>constant("Recursive rule"),
-					null,
-					GutterIconRenderer.Alignment.RIGHT
-			);
-		}
+  private static class MyMarkerInfo extends LineMarkerInfo<BnfRule> {
+    private MyMarkerInfo(@NotNull BnfRule rule) {
+      super(rule,
+            rule.getTextRange(),
+            AllIcons.Gutter.RecursiveMethod,
+            Pass.LINE_MARKERS,
+            FunctionUtil.<BnfRule, String>constant("Recursive rule"),
+            null,
+            GutterIconRenderer.Alignment.RIGHT
+      );
+    }
 
-		@Override
-		public GutterIconRenderer createGutterRenderer() {
-			if (myIcon == null) return null;
-			return new LineMarkerGutterIconRenderer<BnfRule>(this) {
-				@Override
-				public AnAction getClickAction() {
-					return null;
-				}
-			};
-		}
-	}
+    @Override
+    public GutterIconRenderer createGutterRenderer() {
+      if (myIcon == null) return null;
+      return new LineMarkerGutterIconRenderer<BnfRule>(this) {
+        @Override
+        public AnAction getClickAction() {
+          return null;
+        }
+      };
+    }
+  }
 }

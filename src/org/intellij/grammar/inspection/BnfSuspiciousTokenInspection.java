@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,17 +20,21 @@ import com.intellij.codeInspection.InspectionManager;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemsHolder;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor;
 import com.intellij.psi.PsiReference;
 import org.intellij.grammar.generator.ParserGeneratorUtil;
+import org.intellij.grammar.generator.RuleGraphHelper;
 import org.intellij.grammar.psi.BnfExternalExpression;
+import org.intellij.grammar.psi.BnfFile;
 import org.intellij.grammar.psi.BnfRule;
-import org.intellij.grammar.psi.impl.BnfFileImpl;
 import org.intellij.grammar.psi.impl.BnfRefOrTokenImpl;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Set;
 
 /**
  * Created by IntelliJ IDEA.
@@ -74,7 +78,8 @@ public class BnfSuspiciousTokenInspection extends LocalInspectionTool {
   }
 
   private static void checkFile(final PsiFile file, final ProblemsHolder problemsHolder) {
-    if (!(file instanceof BnfFileImpl)) return;
+    if (!(file instanceof BnfFile)) return;
+    final Set<String> tokens = RuleGraphHelper.getTokenNameToTextMap((BnfFile)file).keySet();
     file.accept(new PsiRecursiveElementWalkingVisitor() {
       @Override
       public void visitElement(PsiElement element) {
@@ -90,7 +95,7 @@ public class BnfSuspiciousTokenInspection extends LocalInspectionTool {
           PsiReference reference = element.getReference();
           Object resolve = reference == null ? null : reference.resolve();
           final String text = element.getText();
-          if (resolve == null && isTokenTextSuspicious(text)) {
+          if (resolve == null && !tokens.contains(text) && isTokenTextSuspicious(text)) {
             problemsHolder.registerProblem(element, "'"+text+"' token looks like a reference to a missing rule", new CreateRuleFromTokenFix(text));
           }
         }
@@ -100,8 +105,8 @@ public class BnfSuspiciousTokenInspection extends LocalInspectionTool {
   }
 
   public static boolean isTokenTextSuspicious(String text) {
-    boolean isLowecase = text.equals(text.toLowerCase());
-    boolean isUppercase = !isLowecase && text.equals(text.toUpperCase());
-    return !isLowecase && !isUppercase || isLowecase && text.contains("_");
+    boolean isLowercase = text.equals(text.toLowerCase());
+    boolean isUppercase = !isLowercase && text.equals(text.toUpperCase());
+    return !isLowercase && !isUppercase || isLowercase && StringUtil.containsAnyChar(text, "-_");
   }
 }

@@ -5,16 +5,10 @@ import static $typesClass.*;
 
 %%
 
-%{
-  public $lexerClass() {
-    this((java.io.Reader)null);
-  }
-%}
-
 %public
 %class $lexerClass
-%implements FlexLexer
-%function advance
+%extends LexerBase
+%function advanceImpl
 %type IElementType
 %unicode
 %eof{ return;

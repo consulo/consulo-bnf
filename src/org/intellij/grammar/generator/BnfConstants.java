@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2014 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,12 @@ public interface BnfConstants
 	String CLASS_HEADER_DEF = "// This is a generated file. Not intended for manual editing.";
 
 	String GPUB_CLASS = "com.intellij.lang.parser.GeneratedParserUtilBase";
+	String PSI_BUILDER_CLASS = "com.intellij.lang.PsiBuilder";
+	String PSI_PARSER_CLASS = "com.intellij.lang.PsiParser";
+	//String LIGHT_PSI_PARSER_CLASS = "com.intellij.lang.LightPsiParser";
+	String TOKEN_SET_CLASS = "com.intellij.psi.tree.TokenSet";
+
+	String LANGUAGE_VERSION = "consulo.lang.LanguageVersion";
 
 	String IELEMENTTYPE_CLASS = "com.intellij.psi.tree.IElementType";
 	String PSI_ELEMENT_CLASS = "com.intellij.psi.PsiElement";

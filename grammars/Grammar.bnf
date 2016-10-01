@@ -1,5 +1,7 @@
 {
   classHeader="license.txt"
+  generate=[names="long" visitor-value="R"]
+
   parserClass="org.intellij.grammar.parser.GrammarParser"
   parserUtilClass="org.intellij.grammar.parser.GrammarParserUtil"
 
@@ -16,7 +18,7 @@
   elementTypePrefix="BNF_"
   elementTypeClass="org.intellij.grammar.psi.BnfCompositeElementType"
   tokenTypeClass="org.intellij.grammar.psi.BnfTokenType"
-  
+
   tokens = [
     OP_EQ="="
     OP_IS="::="
@@ -36,6 +38,7 @@
     EXTERNAL_START="<<"
     EXTERNAL_END=">>"
 
+    space='regexp:\s+'
     id="regexp:\w+"
     string="regexp:('([^'\\]|\\.)*'|\"([^\"\\]|\\\"|\\\'|\\)*\")"
     number="regexp:\d+"
@@ -53,19 +56,29 @@
 external grammar ::= parseGrammar grammar_element
 //grammar ::= grammar_element * // live preview root
 
-private grammar_element ::= !<<eof>> (attrs | rule) {pin=1 recoverWhile=grammar_element_recover}
+private grammar_element ::= !<<eof>> (attrs | rule) {
+  pin=1 recoverWhile=grammar_element_recover
+}
 private grammar_element_recover::=!('{'|rule_start)
 
 rule ::= rule_start expression attrs? ';'? {pin=2}
 private rule_start ::= modifier* id '::='
-modifier ::= 'private' | 'external' | 'meta' | 'inner' | 'left' | 'fake'
+modifier ::= 'private' | 'external' | 'meta'
+  | 'inner' | 'left' | 'upper' | 'fake'
 
 attrs ::= '{' attr * '}' {pin=1}
-attr ::= attr_start attr_value ';'? {pin=1 recoverWhile=attr_recover}
-private attr_start ::= id (attr_pattern '=' | '=') {pin(".*")="attr_pattern"}
+attr ::= attr_start attr_value ';'? {
+  pin=1 recoverWhile=attr_recover
+}
+private attr_start ::= id (attr_pattern '=' | '=') {
+  pin(".*")="attr_pattern"
+}
 private attr_start_simple ::= id attr_pattern? '='
 private attr_recover ::= !('}' | attr_start)
-private attr_value ::= (reference_or_token | literal_expression | value_list) !'='
+private attr_value ::= attr_value_inner !'='
+private attr_value_inner ::= reference_or_token
+  | literal_expression
+  | value_list
 attr_pattern ::= '(' string_literal_expression ')' {
   pin=1 methods=[literalExpression="string_literal_expression"]
 }
@@ -79,8 +92,11 @@ private list_entry_tail ::= '=' string_literal_expression {pin=1}
 private list_entry_recover ::= !(']' | '}' | id | string)
 
 expression ::= sequence choice?
-sequence ::= option * {extends=expression recoverWhile=sequence_recover}
-private sequence_recover ::= !(';'|'|'|'('|')'|'['|']'|'{'|'}') grammar_element_recover
+sequence ::= option * {
+  extends=expression recoverWhile=sequence_recover
+}
+private sequence_recover ::=
+  !(';'|'|'|'('|')'|'['|']'|'{'|'}') grammar_element_recover
 private option ::= predicate | paren_opt_expression | simple quantified?
 
 left choice ::= ( '|' sequence ) + {pin(".*")=1 extends=expression}
@@ -91,9 +107,14 @@ predicate ::= predicate_sign simple {extends=expression}
 predicate_sign ::= '&' | '!'
 
 fake parenthesized ::= '(' expression ')' {extends=expression}
-private simple ::= !(modifier* id '::=' ) reference_or_token | literal_expression | external_expression | paren_expression
-external_expression ::= '<<' reference_or_token option * '>>' {pin=2 extends=expression}
-reference_or_token ::= id  {extends=expression }
+private simple ::= !(modifier* id '::=' ) reference_or_token
+  | literal_expression
+  | external_expression
+  | paren_expression
+external_expression ::= '<<' reference_or_token option * '>>' {
+  pin=2 extends=expression
+}
+reference_or_token ::= id  {extends=expression methods=[resolveRule]}
 literal_expression ::= string_literal_expression | number {extends=expression }
 string_literal_expression ::= string {extends=literal_expression}
 paren_expression ::= '(' expression ')' | '{' alt_choice_element '}' {pin(".*")=2}

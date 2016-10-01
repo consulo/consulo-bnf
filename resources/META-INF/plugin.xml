@@ -1,17 +1,19 @@
 <idea-plugin>
 	<id>org.jetbrains.idea.grammar</id>
 	<version>SNAPSHOT</version>
-	<name>Grammar-Kit(Bnf)</name>
-	<vendor email="gregory.shrago@jetbrains.com">Gregory Shrago</vendor>
-	<category>Grammar Languages</category>
-	<description>Edit, manipulate, analyze BNF grammars and generate readable parser/PSI code and a JFlex lexer</description>
-	<depends>org.consulo.java</depends>
-	<!--<depends optional="true" config-file="plugin-uml.xml">com.intellij.diagram</depends>-->
+	<vendor email="gregory.shrago@jetbrains.com">Greg Shrago</vendor>
+
+	<name>Grammar-Kit</name>
+	<description>BNF Grammars editor. Readable parser/PSI code generator.</description>
+	<depends optional="true">com.intellij.spellchecker</depends>
+	<depends optional="true">consulo.java</depends>
+
+	<extensions defaultExtensionNs="com.intellij.spellchecker">
+		<support language="BNF" implementationClass="org.intellij.grammar.editor.BnfSpellCheckingStrategy"/>
+	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
-		<errorHandler implementation="com.intellij.diagnostic.ITNReporter"/>
-
-		<iconDescriptorUpdater implementation="org.intellij.grammar.BnfIconDescriptorUpdater"/>
+		<iconDescriptorUpdater implementation="consulo.grammarKit.BnfIconDescriptorUpdater"/>
 		<fileTypeFactory implementation="org.intellij.grammar.BnfFileTypeFactory"/>
 		<lang.parserDefinition language="BNF" implementationClass="org.intellij.grammar.BnfParserDefinition"/>
 		<annotator language="BNF" implementationClass="org.intellij.grammar.editor.BnfAnnotator"/>
@@ -31,8 +33,11 @@
 								 implementationClass="org.intellij.grammar.psi.impl.BnfStringManipulator"/>
 		<extendWordSelectionHandler implementation="org.intellij.grammar.editor.BnfWordSelectioner"/>
 
+		<!--<psi.referenceContributor implementation="org.intellij.grammar.psi.impl.BnfStringRefContributor" />-->
+		<referencesSearch implementation="org.intellij.grammar.psi.BnfAttrPatternRefSearcher"/>
 		<lang.refactoringSupport language="BNF" implementationClass="org.intellij.grammar.refactor.BnfRefactoringSupportProvider"/>
 		<inlineActionHandler implementation="org.intellij.grammar.refactor.BnfInlineRuleActionHandler"/>
+		<lang.namesValidator language="BNF" implementationClass="org.intellij.grammar.refactor.BnfNamesValidator"/>
 
 		<lang.unwrapDescriptor language="BNF" implementationClass="org.intellij.grammar.refactor.BnfUnwrapDescriptor"/>
 
@@ -54,10 +59,7 @@
 						 implementationClass="org.intellij.grammar.inspection.BnfUnreachableChoiceBranchInspection"/>
 
 		<colorSettingsPage implementation="org.intellij.grammar.editor.BnfColorSettingsPage"/>
-		<quoteHandler fileType="Grammar" className="org.intellij.grammar.editor.BnfQuoteHandler"/>
-
-		<projectService serviceInterface="org.intellij.grammar.java.JavaHelper" serviceImplementation="org.intellij.grammar.java.JavaHelper$Impl"/>
-		<!--<debugger.positionManagerFactory implementation="org.intellij.grammar.debugger.BnfPositionManagerFactory"/>-->
+		<quoteHandler fileType="BNF" className="org.intellij.grammar.editor.BnfQuoteHandler"/>
 
 		<intentionAction>
 			<className>org.intellij.grammar.intention.BnfFlipChoiceIntention</className>
@@ -100,11 +102,12 @@
 				<keyboard-shortcut keymap="$default" first-keystroke="control alt C"/>
 			</action>
 		</group>
-		<action id="grammar.Generate.ParserUtil" class="org.intellij.grammar.actions.BnfGenerateParserUtilAction" text="Generate Parser Util">
-			<add-to-group group-id="grammar.file.group" anchor="after" relative-to-action="grammar.Generate"/>
-		</action>
-		<action id="grammar.Generate.JFlexLexer" class="org.intellij.grammar.actions.BnfGenerateLexerAction" text="Generate JFlex Lexer">
-			<add-to-group group-id="grammar.file.group" anchor="after" relative-to-action="grammar.Generate"/>
-		</action>
 	</actions>
+
+	<project-components>
+		<component>
+			<implementation-class>org.intellij.grammar.livePreview.GrammarAtCaretPassFactory</implementation-class>
+			<skipForDefaultProject/>
+		</component>
+	</project-components>
 </idea-plugin>

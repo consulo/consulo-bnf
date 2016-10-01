@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,37 @@
 
 package org.intellij.grammar.livePreview;
 
+import static org.jetbrains.org.objectweb.asm.Opcodes.*;
+
+import java.lang.ref.SoftReference;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.intellij.grammar.psi.BnfFile;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.org.objectweb.asm.AnnotationVisitor;
+import org.jetbrains.org.objectweb.asm.ClassWriter;
+import org.jetbrains.org.objectweb.asm.FieldVisitor;
+import org.jetbrains.org.objectweb.asm.Label;
+import org.jetbrains.org.objectweb.asm.MethodVisitor;
+import org.jetbrains.org.objectweb.asm.Opcodes;
 import com.intellij.lang.Language;
+import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.fileTypes.PlainTextLanguage;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.TextEditor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.pointers.VirtualFilePointer;
 import com.intellij.openapi.vfs.pointers.VirtualFilePointerManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
-import org.intellij.grammar.psi.BnfFile;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.objectweb.asm.*;
-import static org.objectweb.asm.Opcodes.*;
+import com.intellij.util.ObjectUtils;
+import com.intellij.util.containers.ContainerUtil;
 
 
 /**
@@ -41,6 +55,7 @@ import static org.objectweb.asm.Opcodes.*;
 public class LivePreviewLanguage extends Language {
 
   private final VirtualFilePointer myFilePointer;
+  private final SoftReference<BnfFile> myBnfFile;
   public static final Language BASE_INSTANCE = new Language("BNF_LP") {
     @Override
     public String getDisplayName() {
@@ -50,10 +65,18 @@ public class LivePreviewLanguage extends Language {
 
   private static final MyClassLoader ourClassLoader = new MyClassLoader();
 
-  protected LivePreviewLanguage(@NotNull VirtualFile grammarFile) {
-    super(BASE_INSTANCE, grammarFile.getPath());
-    myFilePointer = VirtualFilePointerManager.getInstance().create(
-      grammarFile, ApplicationManager.getApplication(), null);
+  protected LivePreviewLanguage(@NotNull BnfFile grammarFile) {
+    super(BASE_INSTANCE, ObjectUtils.assertNotNull(grammarFile.getVirtualFile()).getPath());
+    VirtualFile virtualFile = ObjectUtils.assertNotNull(grammarFile.getVirtualFile());
+    Application app = ApplicationManager.getApplication();
+    if (app.isUnitTestMode()) {
+      myBnfFile = new SoftReference<BnfFile>(grammarFile);
+      myFilePointer = null;
+    }
+    else {
+      myFilePointer = VirtualFilePointerManager.getInstance().create(virtualFile, app, null);
+      myBnfFile = null;
+    }
   }
 
   @Override
@@ -64,23 +87,76 @@ public class LivePreviewLanguage extends Language {
 
   @Nullable
   public VirtualFile getGrammarFile() {
-    return myFilePointer.getFile();
+    if (myBnfFile != null) {
+      BnfFile file = myBnfFile.get();
+      return file == null? null : file.getVirtualFile();
+    }
+    else {
+      return myFilePointer.getFile();
+    }
   }
 
   @Nullable
   public BnfFile getGrammar(@Nullable Project project) {
+    if (myBnfFile != null) return myBnfFile.get();
     VirtualFile file = project == null? null : getGrammarFile();
     PsiFile psiFile = file == null? null : PsiManager.getInstance(project).findFile(file);
     return psiFile instanceof BnfFile? (BnfFile)psiFile : null;
   }
 
-  public static LivePreviewLanguage newInstance(VirtualFile vFile) {
+  @NotNull
+  public static LivePreviewLanguage newInstance(PsiFile psiFile) {
     try {
-      return (LivePreviewLanguage)ourClassLoader.createClass().getDeclaredConstructors()[0].newInstance(vFile);
+      return (LivePreviewLanguage)ourClassLoader.createClass().getDeclaredConstructors()[0].newInstance(psiFile);
     }
     catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Nullable
+  public static LivePreviewLanguage findInstance(PsiFile psiFile) {
+    VirtualFile vFile = psiFile.getVirtualFile();
+    if (vFile == null) return null;
+    for (Language language : Language.getRegisteredLanguages()) {
+      if (language instanceof LivePreviewLanguage &&
+          vFile.equals(((LivePreviewLanguage)language).getGrammarFile())) {
+        return (LivePreviewLanguage)language;
+      }
+    }
+    return null;
+  }
+
+  @NotNull
+  public List<Editor> getGrammarEditors(@NotNull Project project) {
+    VirtualFile file = getGrammarFile();
+    if (file == null) return Collections.emptyList();
+    FileEditor[] editors = FileEditorManager.getInstance(project).getAllEditors(file);
+    if (editors.length == 0) return Collections.emptyList();
+    List<Editor> result = ContainerUtil.newArrayList();
+    for (FileEditor editor : editors) {
+      if (editor instanceof TextEditor) result.add(((TextEditor)editor).getEditor());
+    }
+    return result;
+  }
+
+  @NotNull
+  public List<Editor> getPreviewEditors(@NotNull Project project) {
+    FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+    VirtualFile[] files = fileEditorManager.getOpenFiles();
+    if (files.length == 0) return Collections.emptyList();
+    List<Editor> result = ContainerUtil.newArrayList();
+    PsiManager psiManager = PsiManager.getInstance(project);
+    for (VirtualFile file : files) {
+      PsiFile psiFile = psiManager.findFile(file);
+      Language language = psiFile == null ? null : psiFile.getLanguage();
+      if (language == this) {
+        for (FileEditor editor : fileEditorManager.getAllEditors(file)) {
+          if (editor instanceof TextEditor) result.add(((TextEditor)editor).getEditor());
+        }
+      }
+    }
+    return result;
   }
 
   private static class MyClassLoader extends ClassLoader {
@@ -109,7 +185,7 @@ public class LivePreviewLanguage extends Language {
       cw.visitSource("LivePreviewLanguage1.java", null);
 
       {
-        mv = cw.visitMethod(ACC_PUBLIC, "<init>", "(Lcom/intellij/openapi/vfs/VirtualFile;)V", null, null);
+        mv = cw.visitMethod(ACC_PUBLIC, "<init>", "(Lorg/intellij/grammar/psi/BnfFile;)V", null, null);
         {
           av0 = mv.visitParameterAnnotation(0, "Lorg/jetbrains/annotations/NotNull;", false);
           av0.visitEnd();
@@ -132,7 +208,7 @@ public class LivePreviewLanguage extends Language {
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKESPECIAL, "org/intellij/grammar/livePreview/LivePreviewLanguage", "<init>",
-                           "(Lcom/intellij/openapi/vfs/VirtualFile;)V");
+                           "(Lorg/intellij/grammar/psi/BnfFile;)V");
         Label l2 = new Label();
         mv.visitLabel(l2);
         mv.visitLineNumber(12, l2);
@@ -140,7 +216,7 @@ public class LivePreviewLanguage extends Language {
         Label l3 = new Label();
         mv.visitLabel(l3);
         mv.visitLocalVariable("this", "Lorg/intellij/grammar/livePreview/LivePreviewLanguage1;", null, l0, l3, 0);
-        mv.visitLocalVariable("grammarFile", "Lcom/intellij/openapi/vfs/VirtualFile;", null, l0, l3, 1);
+        mv.visitLocalVariable("grammarFile", "Lorg/intellij/grammar/psi/BnfFile;", null, l0, l3, 1);
         mv.visitMaxs(3, 2);
         mv.visitEnd();
       }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,36 +17,30 @@
 package org.intellij.grammar.livePreview;
 
 import static org.intellij.grammar.generator.ParserGeneratorUtil.getRootAttribute;
+import static org.intellij.grammar.livePreview.LivePreviewParserDefinition.COMMENT;
+import static org.intellij.grammar.livePreview.LivePreviewParserDefinition.NUMBER;
+import static org.intellij.grammar.livePreview.LivePreviewParserDefinition.STRING;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.intellij.grammar.KnownAttribute;
+import org.intellij.grammar.generator.Case;
 import org.intellij.grammar.generator.ParserGeneratorUtil;
 import org.intellij.grammar.psi.BnfFile;
-import org.intellij.grammar.psi.BnfReferenceOrToken;
-import org.intellij.grammar.psi.BnfRule;
-import org.intellij.grammar.psi.BnfStringLiteralExpression;
-import org.intellij.grammar.psi.BnfVisitor;
-import org.intellij.grammar.psi.impl.GrammarUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import com.intellij.lang.Language;
 import com.intellij.lexer.LexerBase;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.psi.TokenType;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.util.containers.ContainerUtil;
 
 /**
  * @author gregsh
@@ -65,26 +59,28 @@ public class LivePreviewLexer extends LexerBase {
   public LivePreviewLexer(Project project, final LivePreviewLanguage language) {
     final BnfFile bnfFile = language.getGrammar(project);
 
-    myTokens = bnfFile == null? new Token[0] : CachedValuesManager.getManager(project).getCachedValue(bnfFile, new CachedValueProvider<Token[]>() {
+    myTokens = bnfFile == null? new Token[0] : CachedValuesManager.getCachedValue(bnfFile, new CachedValueProvider<Token[]>() {
       @Nullable
       @Override
       public Result<Token[]> compute() {
-        Map<String, String> map = collectTokenPattern2Name(bnfFile);
-        if (!map.containsKey("regexp:\\w+")) map.put("regexp:\\w+", "GENERIC_ID");
-        Token[] tokens = new Token[map.size() + 1];
+        Set<String> usedInGrammar = ContainerUtil.newLinkedHashSet();
+        Map<String, String> map = collectTokenPattern2Name(bnfFile, usedInGrammar);
+
+        Token[] tokens = new Token[map.size()];
         int i = 0;
         String tokenConstantPrefix = getRootAttribute(bnfFile, KnownAttribute.ELEMENT_TYPE_PREFIX);
         for (String pattern : map.keySet()) {
-          tokens[i++] = new Token(pattern, map.get(pattern), tokenConstantPrefix, language);
+          String tokenName = map.get(pattern);
+
+          tokens[i++] = new Token(pattern, tokenName, usedInGrammar.contains(tokenName), tokenConstantPrefix, language);
         }
-        tokens[i] = new Token("\\s+", TokenType.WHITE_SPACE);
         return Result.create(tokens, bnfFile);
       }
     });
   }
 
   @Override
-  public void start(CharSequence buffer, int startOffset, int endOffset, int initialState) {
+  public void start(@NotNull CharSequence buffer, int startOffset, int endOffset, int initialState) {
     myBuffer = buffer;
     myEndOffset = endOffset;
     myPosition = startOffset;
@@ -111,7 +107,7 @@ public class LivePreviewLexer extends LexerBase {
         if (findAtOffset(nextOffset)) break;
       }
       myTokenEnd = nextOffset;
-      myTokenType = TokenType.BAD_CHARACTER;
+      myTokenType = com.intellij.psi.TokenType.BAD_CHARACTER;
     }
   }
 
@@ -165,6 +161,7 @@ public class LivePreviewLexer extends LexerBase {
     }
   }
 
+  @NotNull
   @Override
   public CharSequence getBufferSequence() {
     return myBuffer;
@@ -185,8 +182,8 @@ public class LivePreviewLexer extends LexerBase {
     final Pattern pattern;
     final IElementType tokenType;
 
-    Token(String pattern, String mappedName, String constantPrefix, LivePreviewLanguage language) {
-      constantName = constantPrefix + mappedName.toUpperCase(Locale.ENGLISH);
+    Token(String pattern, String mappedName, boolean usedInGrammar, String constantPrefix, LivePreviewLanguage language) {
+      constantName = constantPrefix + Case.UPPER.apply(mappedName);
       String tokenName;
       boolean keyword;
       if (ParserGeneratorUtil.isRegexpToken(pattern)) {
@@ -200,19 +197,17 @@ public class LivePreviewLexer extends LexerBase {
         tokenName = pattern;
         keyword = StringUtil.isJavaIdentifier(pattern);
       }
-      //noinspection EmptyClass
-      if (StringUtil.endsWithIgnoreCase(tokenName, "comment")) tokenType = LivePreviewParserDefinition.COMMENT;
-      else if (StringUtil.endsWithIgnoreCase(tokenName, "string")) tokenType = LivePreviewParserDefinition.STRING;
-      else if (StringUtil.endsWithIgnoreCase(tokenName, "number")) tokenType = LivePreviewParserDefinition.NUMBER;
-      else if (StringUtil.endsWithIgnoreCase(tokenName, "integer")) tokenType = LivePreviewParserDefinition.NUMBER;
-      else if (keyword) tokenType = new KeywordTokenType(tokenName, language);
-      else tokenType = new IElementType(tokenName, language, false) {};
-    }
 
-    Token(String pattern, IElementType tokenType) {
-      this.pattern = ParserGeneratorUtil.compilePattern(pattern);
-      this.tokenType = tokenType;
-      this.constantName = "<no-name>";
+      IElementType delegate = keyword ? null : guessDelegateType(tokenName, this.pattern, usedInGrammar);
+      if (keyword) {
+        tokenType = new LivePreviewElementType.KeywordType(tokenName, language);
+      }
+      else if (delegate == com.intellij.psi.TokenType.WHITE_SPACE || delegate == COMMENT) {
+        tokenType = delegate; // PreviewTokenType(tokenName, language, delegate);
+      }
+      else {
+        tokenType = new LivePreviewElementType.TokenType(delegate, tokenName, language);
+      }
     }
 
     @Override
@@ -225,46 +220,29 @@ public class LivePreviewLexer extends LexerBase {
     }
   }
 
-  @NotNull
-  public static Map<String, String> collectTokenPattern2Name(@Nullable final BnfFile file) {
-    if (file == null) return Collections.emptyMap();
-    final Map<String, String> map = new LinkedHashMap<String, String>();
-    List<Pair<String, String>> tokenAttr = file.findAttributeValue(null, KnownAttribute.TOKENS, null);
-    for (Pair<String, String> pair : tokenAttr) {
-      if (pair.first == null || pair.second == null) continue;
-      map.put(pair.second, pair.first);
-    }
-    GrammarUtil.visitRecursively(file, true, new BnfVisitor() {
-      @Override
-      public void visitStringLiteralExpression(@NotNull BnfStringLiteralExpression o) {
-        String text = o.getText();
-        String tokenText = StringUtil.stripQuotesAroundValue(text);
-        for (String name : map.keySet()) {
-          if (tokenText.equals(map.get(name))) return;
-        }
+  @Nullable
+  private static IElementType guessDelegateType(@NotNull String tokenName,
+                                                @Nullable Pattern pattern,
+                                                boolean usedInGrammar) {
+    if (pattern != null) {
+      if (!usedInGrammar && (pattern.matcher(" ").matches() || pattern.matcher("\n").matches())) {
+        return com.intellij.psi.TokenType.WHITE_SPACE;
       }
-
-      @Override
-      public void visitReferenceOrToken(@NotNull BnfReferenceOrToken o) {
-        if (GrammarUtil.isExternalReference(o)) return;
-        String text = o.getText();
-        BnfRule rule = file.getRule(text);
-        if (rule != null) return;
-        if (!map.containsValue(text)) map.put(text, text);
+      else if (pattern.matcher("1234").matches()) {
+        return NUMBER;
       }
-    });
-    for (Pair<String, String> pair : tokenAttr) {
-      if (pair.first == null || pair.second == null) continue;
-      map.remove(pair.second);
-      map.put(pair.second, pair.first);
+      else if (pattern.matcher("\"sdf\"").matches() || pattern.matcher("\'sdf\'").matches()) {
+        return STRING;
+      }
     }
-
-    return map;
+    if (!usedInGrammar && StringUtil.endsWithIgnoreCase(tokenName, "comment")) {
+      return COMMENT;
+    }
+    return null;
   }
 
-  static class KeywordTokenType extends IElementType {
-    KeywordTokenType(String name, Language language) {
-      super(name, language, false);
-    }
+  @NotNull
+  public static Map<String, String> collectTokenPattern2Name(@NotNull BnfFile file, @Nullable Set<String> usedInGrammar) {
+    return ParserGeneratorUtil.collectTokenPattern2Name(file, true, ContainerUtil.<String, String>newLinkedHashMap(), usedInGrammar);
   }
 }

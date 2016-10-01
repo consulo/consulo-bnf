@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +16,6 @@
 
 package org.intellij.grammar.refactor;
 
-import gnu.trove.TObjectIntHashMap;
-
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-
-import org.intellij.grammar.generator.ParserGeneratorUtil;
-import org.intellij.grammar.psi.BnfExpression;
-import org.intellij.grammar.psi.BnfExternalExpression;
-import org.intellij.grammar.psi.BnfModifier;
-import org.intellij.grammar.psi.BnfRule;
-import org.intellij.grammar.psi.BnfSequence;
-import org.intellij.grammar.psi.impl.BnfElementFactory;
-import org.intellij.grammar.psi.impl.GrammarUtil;
-import org.jetbrains.annotations.NotNull;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Pair;
@@ -44,6 +29,17 @@ import com.intellij.refactoring.util.CommonRefactoringUtil;
 import com.intellij.usageView.UsageInfo;
 import com.intellij.usageView.UsageViewDescriptor;
 import com.intellij.util.IncorrectOperationException;
+import com.intellij.util.containers.ContainerUtil;
+import gnu.trove.TObjectIntHashMap;
+import org.intellij.grammar.generator.ParserGeneratorUtil;
+import org.intellij.grammar.psi.*;
+import org.intellij.grammar.psi.impl.BnfElementFactory;
+import org.intellij.grammar.psi.impl.GrammarUtil;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by IntelliJ IDEA.
@@ -78,12 +74,13 @@ public class BnfInlineRuleProcessor extends BaseRefactoringProcessor {
   protected UsageInfo[] findUsages() {
     if (myInlineThisOnly) return new UsageInfo[]{new UsageInfo(myReference.getElement())};
 
-    PsiReference[] refs = ReferencesSearch.search(myRule, myRule.getUseScope(), false).toArray(new PsiReference[0]);
-    UsageInfo[] infos = new UsageInfo[refs.length];
-    for (int i = 0, len = refs.length; i < len; i++) {
-      infos[i] = new UsageInfo(refs[i].getElement());
+    List<UsageInfo> result = ContainerUtil.newArrayList();
+    for (PsiReference reference : ReferencesSearch.search(myRule, myRule.getUseScope(), false)) {
+      PsiElement element = reference.getElement();
+      if (GrammarUtil.isInAttributesReference(element)) continue;
+      result.add(new UsageInfo(element));
     }
-    return infos;
+    return result.toArray(new UsageInfo[result.size()]);
   }
 
   protected void refreshElements(PsiElement[] elements) {
@@ -94,9 +91,8 @@ public class BnfInlineRuleProcessor extends BaseRefactoringProcessor {
   protected void performRefactoring(UsageInfo[] usages) {
     BnfExpression expression = myRule.getExpression();
     boolean meta = ParserGeneratorUtil.Rule.isMeta(myRule);
-    LOG.assertTrue(expression != null);
 
-	CommonRefactoringUtil.sortDepthFirstRightLeftOrder(usages);
+    CommonRefactoringUtil.sortDepthFirstRightLeftOrder(usages);
     for (UsageInfo info : usages) {
       try {
         final BnfExpression element = (BnfExpression)info.getElement();

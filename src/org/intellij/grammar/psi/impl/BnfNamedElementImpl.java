@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,18 @@
  */
 package org.intellij.grammar.psi.impl;
 
+import static org.intellij.grammar.psi.BnfTypes.BNF_ID;
+
+import org.intellij.grammar.psi.BnfModifier;
+import org.intellij.grammar.psi.BnfNamedElement;
+import org.intellij.grammar.psi.BnfRule;
+import org.jetbrains.annotations.NonNls;
+import org.jetbrains.annotations.NotNull;
 import com.intellij.lang.ASTNode;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.search.LocalSearchScope;
 import com.intellij.psi.search.SearchScope;
 import com.intellij.util.IncorrectOperationException;
-import org.intellij.grammar.psi.BnfNamedElement;
-import org.jetbrains.annotations.NonNls;
-import org.jetbrains.annotations.NotNull;
-
-import static org.intellij.grammar.psi.BnfTypes.BNF_ID;
 
 /**
  * Created by IntelliJ IDEA.
@@ -50,7 +52,7 @@ public abstract class BnfNamedElementImpl extends BnfCompositeElementImpl implem
   @Override
   public String getName() {
     if (myCachedName == null) {
-      myCachedName = getId().getText();
+      myCachedName = GrammarUtil.getIdText(getId());
     }
     return myCachedName;
   }
@@ -75,6 +77,13 @@ public abstract class BnfNamedElementImpl extends BnfCompositeElementImpl implem
   @Override
   public PsiElement getNameIdentifier() {
     return getId();
+  }
+
+  public static boolean hasModifier(BnfRule rule, String modifier) {
+    for (BnfModifier o : rule.getModifierList()) {
+      if (modifier.equals(o.getText())) return true;
+    }
+    return false;
   }
 
   @Override

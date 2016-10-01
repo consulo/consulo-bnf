@@ -1,3 +1,19 @@
+/*
+ * Copyright 2011-present Greg Shrago
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.intellij.grammar.refactor;
 
 import com.intellij.codeInsight.lookup.LookupElement;
@@ -35,7 +51,10 @@ import org.intellij.grammar.psi.impl.GrammarUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * @author greg
@@ -56,7 +75,8 @@ public class BnfIntroduceTokenHandler implements RefactoringActionHandler {
     if (!(file instanceof BnfFile)) return;
     final BnfFile bnfFile = (BnfFile) file;
 
-    final Map<String, String> tokenMap = RuleGraphHelper.getTokenMap(bnfFile);
+    final Map<String, String> tokenNameMap = RuleGraphHelper.getTokenNameToTextMap(bnfFile);
+    final Map<String, String> tokenTextMap = RuleGraphHelper.getTokenTextToNameMap(bnfFile);
 
     final String tokenText;
     final String tokenName;
@@ -65,43 +85,41 @@ public class BnfIntroduceTokenHandler implements RefactoringActionHandler {
       if (bnfFile.getRule(target.getText()) != null) return;
       if (GrammarUtil.isExternalReference(target)) return;
       tokenName = target.getText();
-      String existingKey = null;
-      for (String key : tokenMap.keySet()) {
-        if (tokenName.equals(tokenMap.get(key))) {
-          existingKey = key;
-          break;
-        }
-      }
-      tokenText = existingKey;
+      tokenText = tokenNameMap.get(tokenName);
     }
     else if (target instanceof BnfStringLiteralExpression) {
       if (PsiTreeUtil.getParentOfType(target, BnfAttrs.class) != null) return;
       tokenText = target.getText();
-      tokenName = tokenMap.get(StringUtil.unquoteString(tokenText));
+      tokenName = tokenTextMap.get(StringUtil.unquoteString(tokenText));
     }
     else return;
 
-    final ArrayList<BnfExpression> allOccurrences = new ArrayList<BnfExpression>();
-    final LinkedHashMap<OccurrencesChooser.ReplaceChoice, List<BnfExpression>> occurrencesMap = new LinkedHashMap<OccurrencesChooser.ReplaceChoice, List<BnfExpression>>();
+    final List<BnfExpression> allOccurrences = ContainerUtil.newArrayList();
+    final Map<OccurrencesChooser.ReplaceChoice, List<BnfExpression>> occurrencesMap = ContainerUtil.newLinkedHashMap();
     occurrencesMap.put(OccurrencesChooser.ReplaceChoice.NO, Collections.singletonList(target));
     occurrencesMap.put(OccurrencesChooser.ReplaceChoice.ALL, allOccurrences);
 
-    GrammarUtil.visitRecursively(file, true, new BnfVisitor() {
+    BnfVisitor visitor = new BnfVisitor<Void>() {
       @Override
-      public void visitStringLiteralExpression(@NotNull BnfStringLiteralExpression o) {
+      public Void visitStringLiteralExpression(@NotNull BnfStringLiteralExpression o) {
         if (tokenText != null && tokenText.equals(o.getText())) {
           allOccurrences.add(o);
         }
+        return null;
       }
 
       @Override
-      public void visitReferenceOrToken(@NotNull BnfReferenceOrToken o) {
-        if (GrammarUtil.isExternalReference(o)) return;
+      public Void visitReferenceOrToken(@NotNull BnfReferenceOrToken o) {
+        if (GrammarUtil.isExternalReference(o)) return null;
         if (tokenName != null && tokenName.equals(o.getText())) {
           allOccurrences.add(o);
         }
+        return null;
       }
-    });
+    };
+    for (PsiElement o : GrammarUtil.bnfTraverserNoAttrs(file)) {
+      o.accept(visitor);
+    }
 
     if (occurrencesMap.get(OccurrencesChooser.ReplaceChoice.ALL).size() <= 1 && !ApplicationManager.getApplication().isUnitTestMode()) {
       occurrencesMap.remove(OccurrencesChooser.ReplaceChoice.ALL);
@@ -112,8 +130,8 @@ public class BnfIntroduceTokenHandler implements RefactoringActionHandler {
       public void pass(final OccurrencesChooser.ReplaceChoice choice) {
         new WriteCommandAction(project, REFACTORING_NAME, file) {
           @Override
-          protected void run(com.intellij.openapi.application.Result result) throws Throwable {
-            buildTemplateAndRun(project, editor, bnfFile, occurrencesMap.get(choice), tokenName, tokenText, tokenMap);
+          protected void run(@NotNull com.intellij.openapi.application.Result result) throws Throwable {
+            buildTemplateAndRun(project, editor, bnfFile, occurrencesMap.get(choice), tokenName, tokenText, tokenNameMap.keySet());
           }
         }.execute();
       }
@@ -136,9 +154,9 @@ public class BnfIntroduceTokenHandler implements RefactoringActionHandler {
                                    BnfFile bnfFile, List<BnfExpression> occurrences,
                                    String tokenName,
                                    String tokenText,
-                                   Map<String, String> tokenMap) throws StartMarkAction.AlreadyStartedException {
+                                   Set<String> tokenNames) throws StartMarkAction.AlreadyStartedException {
     final StartMarkAction startAction = StartMarkAction.start(editor, project, REFACTORING_NAME);
-    BnfListEntry entry = addTokenDefinition(project, bnfFile, tokenName, tokenText, tokenMap);
+    BnfListEntry entry = addTokenDefinition(project, bnfFile, tokenName, tokenText, tokenNames);
     PsiDocumentManager.getInstance(project).doPostponedOperationsAndUnblockDocument(editor.getDocument());
 
     TemplateBuilderImpl builder = new TemplateBuilderImpl(bnfFile);
@@ -217,8 +235,8 @@ public class BnfIntroduceTokenHandler implements RefactoringActionHandler {
                                                  BnfFile bnfFile,
                                                  String tokenName,
                                                  String tokenText,
-                                                 Map<String, String> tokenMap) {
-    String fixedTokenName = new UniqueNameGenerator(tokenMap.values(), null).generateUniqueName(StringUtil.notNullize(tokenName, "token"));
+                                                 Set<String> tokenNames) {
+    String fixedTokenName = new UniqueNameGenerator(tokenNames, null).generateUniqueName(StringUtil.notNullize(tokenName, "token"));
     String newAttrText = "tokens = [\n    " + fixedTokenName + "=" + StringUtil.notNullize(tokenText, "\"\"") + "\n  ]";
     BnfAttr newAttr = BnfElementFactory.createAttributeFromText(project, newAttrText);
     BnfAttrs attrs = ContainerUtil.getFirstItem(bnfFile.getAttributes());

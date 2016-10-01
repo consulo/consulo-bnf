@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
  */
 package org.intellij.grammar;
 
+import org.intellij.grammar.psi.BnfAttr;
+import org.intellij.grammar.psi.BnfRule;
+import org.jetbrains.annotations.NotNull;
 import com.intellij.lang.cacheBuilder.WordsScanner;
 import com.intellij.lang.findUsages.FindUsagesProvider;
 import com.intellij.psi.ElementDescriptionUtil;
@@ -22,9 +25,6 @@ import com.intellij.psi.PsiElement;
 import com.intellij.usageView.UsageViewLongNameLocation;
 import com.intellij.usageView.UsageViewNodeTextLocation;
 import com.intellij.usageView.UsageViewTypeLocation;
-import org.intellij.grammar.psi.BnfAttr;
-import org.intellij.grammar.psi.BnfRule;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * @author gregsh

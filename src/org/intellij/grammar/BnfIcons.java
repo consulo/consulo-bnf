@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
  */
 package org.intellij.grammar;
 
+import javax.swing.Icon;
+
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.util.PlatformIcons;
-
-import javax.swing.*;
 
 /**
  * @author gregory

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,10 @@ import org.jetbrains.annotations.NotNull;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.intellij.extapi.psi.PsiFileBase;
 import com.intellij.lang.ASTNode;
-import com.intellij.lang.LanguageVersion;
 import com.intellij.lang.ParserDefinition;
 import com.intellij.lang.PsiParser;
 import com.intellij.lexer.Lexer;
 import com.intellij.openapi.fileTypes.FileType;
-import com.intellij.openapi.project.Project;
 import com.intellij.psi.FileViewProvider;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -33,6 +31,7 @@ import com.intellij.psi.TokenType;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.IFileElementType;
 import com.intellij.psi.tree.TokenSet;
+import consulo.lang.LanguageVersion;
 
 /**
  * @author gregsh
@@ -55,15 +54,19 @@ public class LivePreviewParserDefinition implements ParserDefinition {
     myFileElementType = new IFileElementType(myLanguage); // todo do not register
   }
 
+  public LivePreviewLanguage getLanguage() {
+    return myLanguage;
+  }
+
   @NotNull
   @Override
-  public Lexer createLexer(Project project, LanguageVersion languageVersion) {
-    return new LivePreviewLexer(project, myLanguage);
+  public Lexer createLexer(LanguageVersion languageVersion) {
+    return new LivePreviewLexer(null, myLanguage);
   }
 
   @Override
-  public PsiParser createParser(Project project, LanguageVersion languageVersion) {
-    return new LivePreviewParser(project, myLanguage);
+  public PsiParser createParser(LanguageVersion languageVersion) {
+    return new LivePreviewParser(null, myLanguage);
   }
 
   @Override

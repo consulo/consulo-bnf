@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,114 +25,175 @@ import com.intellij.openapi.actionSystem.LangDataKeys;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
-import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.roots.ProjectRootManager;
+import com.intellij.openapi.util.ThrowableComputable;
+import com.intellij.openapi.util.io.FileUtil;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vcs.changes.BackgroundFromStartOption;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.util.ExceptionUtil;
+import com.intellij.util.Function;
+import com.intellij.util.PathUtil;
+import com.intellij.util.containers.ContainerUtil;
+import org.intellij.grammar.KnownAttribute;
 import org.intellij.grammar.generator.BnfConstants;
 import org.intellij.grammar.generator.ParserGenerator;
 import org.intellij.grammar.psi.BnfFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.util.HashSet;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
+import static org.intellij.grammar.actions.FileGeneratorUtil.getTargetDirectoryFor;
+import static org.intellij.grammar.generator.ParserGeneratorUtil.getRootAttribute;
 
 /**
  * @author gregory
  *         Date: 15.07.11 17:12
  */
-public class GenerateAction extends AnAction implements DumbAware {
+public class GenerateAction extends AnAction {
 
   public static final NotificationGroup LOG_GROUP = NotificationGroup.logOnlyGroup("Parser Generator Log");
   
   private static final Logger LOG = Logger.getInstance("org.intellij.grammar.actions.GenerateAction");
 
   @Override
-  public void update(AnActionEvent e) {
-    Project project = getEventProject(e);
-    VirtualFile[] files = LangDataKeys.VIRTUAL_FILE_ARRAY.getData(e.getDataContext());
-    boolean grammarFound = false;
-    if (project != null && files != null) {
-      PsiManager manager = PsiManager.getInstance(project);
-      for (VirtualFile virtualFile : files) {
-        PsiFile psiFile = manager.findFile(virtualFile);
-        grammarFound = psiFile instanceof BnfFile;
-        if (grammarFound) break;
-      }
-    }
-    e.getPresentation().setEnabled(grammarFound);
-    e.getPresentation().setVisible(grammarFound);
+  public void update(@NotNull AnActionEvent e) {
+    Project project = e.getProject();
+    List<BnfFile> files = getFiles(e);
+    e.getPresentation().setEnabledAndVisible(project != null && !files.isEmpty());
   }
 
-  @Override
-  public void actionPerformed(final AnActionEvent e) {
-    final Project project = getEventProject(e);
-    final VirtualFile[] files = LangDataKeys.VIRTUAL_FILE_ARRAY.getData(e.getDataContext());
-    if (project == null || files == null) return;
-    PsiDocumentManager.getInstance(project).commitAllDocuments();
-    FileDocumentManager.getInstance().saveAllDocuments();
-
-    final Set<File> pathsToRefresh = new HashSet<File>();
-    ProgressManager.getInstance().run(new Task.Backgroundable(project, "Parser Generation", true, new BackgroundFromStartOption()) {
+  private static List<BnfFile> getFiles(AnActionEvent e) {
+    Project project = e.getProject();
+    VirtualFile[] files = LangDataKeys.VIRTUAL_FILE_ARRAY.getData(e.getDataContext());
+    if (project == null || files == null) return Collections.emptyList();
+    final PsiManager manager = PsiManager.getInstance(project);
+    return ContainerUtil.mapNotNull(files, new Function<VirtualFile, BnfFile>() {
       @Override
-      public void onSuccess() {
-        refreshFiles(pathsToRefresh);
-      }
-
-      @Override
-      public void onCancel() {
-        refreshFiles(pathsToRefresh);
-      }
-
-      @Override
-      public void run(@NotNull ProgressIndicator indicator) {
-        indicator.setIndeterminate(true);
-        ApplicationManager.getApplication().runReadAction(new Runnable() {
-          @Override
-          public void run() {
-            PsiManager psiManager = PsiManager.getInstance(project);
-            for (VirtualFile file : files) {
-              PsiFile bnfFile = psiManager.findFile(file);
-              if (!(bnfFile instanceof BnfFile)) continue;
-              VirtualFile virtualFile = bnfFile.getVirtualFile();
-              String sourcePath = virtualFile == null? "" : VfsUtil.virtualToIoFile(virtualFile).getParentFile().getAbsolutePath();
-
-              VirtualFile content = ProjectRootManager.getInstance(project).getFileIndex().getContentRootForFile(file);
-              VirtualFile parentDir = content == null ? file.getParent() : content;
-              String outputPath = new File(VfsUtil.virtualToIoFile(parentDir), "gen").getAbsolutePath();
-              pathsToRefresh.add(new File(outputPath));
-              try {
-                new ParserGenerator((BnfFile)bnfFile, sourcePath, outputPath).generate();
-                Notifications.Bus.notify(new Notification(BnfConstants.GENERATION_GROUP,
-                                                          file.getName() + " parser generated", "to " + outputPath,
-                                                          NotificationType.INFORMATION), project);
-              }
-              catch (Exception ex) {
-                Notifications.Bus.notify(new Notification(BnfConstants.GENERATION_GROUP,
-                                                          file.getName() + " parser generation failed",
-                                                          ExceptionUtil.getUserStackTrace(ex, ParserGenerator.LOG),
-                                                          NotificationType.ERROR), project);
-                LOG.warn(ex);
-              }
-            }
-          }
-        });
+      public BnfFile fun(VirtualFile file) {
+        PsiFile psiFile = manager.findFile(file);
+        return psiFile instanceof BnfFile ? (BnfFile)psiFile : null;
       }
     });
   }
 
-  private static void refreshFiles(Set<File> pathsToRefresh) {
-    LocalFileSystem.getInstance().refreshIoFiles(pathsToRefresh, true, true, null);
+  @Override
+  public void actionPerformed(@NotNull AnActionEvent e) {
+    Project project = getEventProject(e);
+    List<BnfFile> files = getFiles(e);
+    if (project == null || files.isEmpty()) return;
+    PsiDocumentManager.getInstance(project).commitAllDocuments();
+    FileDocumentManager.getInstance().saveAllDocuments();
+
+    doGenerate(project, files);
+  }
+
+  public static void doGenerate(@NotNull final Project project, final List<BnfFile> bnfFiles) {
+    final Map<BnfFile, VirtualFile> rootMap = ContainerUtil.newLinkedHashMap();
+    ApplicationManager.getApplication().runWriteAction(new Runnable() {
+      @Override
+      public void run() {
+        for (BnfFile file : bnfFiles) {
+          String parserClass = getRootAttribute(file, KnownAttribute.PARSER_CLASS);
+          VirtualFile target =
+            getTargetDirectoryFor(project, file.getVirtualFile(),
+                                  StringUtil.getShortName(parserClass) + ".java",
+                                  StringUtil.getPackageName(parserClass), true);
+          rootMap.put(file, target);
+        }
+      }
+    });
+
+    ProgressManager.getInstance().run(new Task.Backgroundable(project, "Parser Generation", true, new BackgroundFromStartOption()) {
+
+      List<File> files = ContainerUtil.newArrayList();
+      Set<VirtualFile> targets = ContainerUtil.newLinkedHashSet();
+      long totalWritten = 0;
+
+      @Override
+      public void run(@NotNull ProgressIndicator indicator) {
+        long startTime = System.currentTimeMillis();
+        indicator.setIndeterminate(true);
+        try {
+          runInner();
+        }
+        finally {
+          String report = String.format("%d grammars: %d files generated (%s) in %s",
+                                        bnfFiles.size(),
+                                        files.size(),
+                                        StringUtil.formatFileSize(totalWritten),
+                                        StringUtil.formatDuration(System.currentTimeMillis() - startTime));
+          if (bnfFiles.size() > 3) {
+            Notifications.Bus.notify(new Notification(
+              BnfConstants.GENERATION_GROUP,
+              "", report, NotificationType.INFORMATION), project);
+          }
+          VfsUtil.markDirtyAndRefresh(true, true, true, targets.toArray(new VirtualFile[targets.size()]));
+        }
+      }
+
+      private void runInner() {
+        for (final BnfFile file : bnfFiles) {
+          final String sourcePath = FileUtil.toSystemDependentName(PathUtil.getCanonicalPath(
+            file.getVirtualFile().getParent().getPath()));
+          VirtualFile target = rootMap.get(file);
+          if (target == null) return;
+          targets.add(target);
+          final File genDir = new File(VfsUtil.virtualToIoFile(target).getAbsolutePath());
+          try {
+            long time = System.currentTimeMillis();
+            int filesCount = files.size();
+            ApplicationManager.getApplication().runReadAction(new ThrowableComputable<Boolean, Exception>() {
+              @Override
+              public Boolean compute() throws Exception {
+                new ParserGenerator(file, sourcePath, genDir.getPath()) {
+                  @Override
+                  protected PrintWriter openOutputInner(File file) throws IOException {
+                    files.add(file);
+                    return super.openOutputInner(file);
+                  }
+                }.generate();
+                return true;
+              }
+            });
+            long millis = System.currentTimeMillis() - time;
+            String duration = millis < 1000 ? null : StringUtil.formatDuration(millis);
+            long written = 0;
+            for (File f : files.subList(filesCount, files.size())) {
+              written += f.length();
+            }
+            totalWritten += written;
+            Notifications.Bus.notify(new Notification(
+              BnfConstants.GENERATION_GROUP,
+              String.format("%s generated (%s)", file.getName(), StringUtil.formatFileSize(written)),
+              "to " + genDir + (duration == null ? "" : " in " + duration), NotificationType.INFORMATION), project);
+          }
+          catch (ProcessCanceledException ignored) {
+          }
+          catch (Exception ex) {
+            Notifications.Bus.notify(new Notification(
+              BnfConstants.GENERATION_GROUP,
+              file.getName() + " generation failed",
+              ExceptionUtil.getUserStackTrace(ex, ParserGenerator.LOG), NotificationType.ERROR), project);
+            LOG.warn(ex);
+          }
+        }
+
+      }
+    });
   }
 }

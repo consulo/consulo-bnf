@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package org.intellij.grammar.psi;
 
 import com.intellij.psi.PsiElement;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * User: gregory
@@ -23,4 +24,7 @@ import com.intellij.psi.PsiElement;
  * Time: 19:02
  */
 public interface BnfCompositeElement extends PsiElement {
+
+  <R> R accept(@NotNull BnfVisitor<R> visitor);
+
 }

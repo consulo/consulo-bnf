@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,16 @@
 
 package org.intellij.grammar;
 
+import java.util.ArrayList;
+
+import org.intellij.grammar.psi.BnfAttr;
+import org.intellij.grammar.psi.BnfAttrs;
+import org.intellij.grammar.psi.BnfExpression;
+import org.intellij.grammar.psi.BnfFile;
+import org.intellij.grammar.psi.BnfRule;
+import org.intellij.grammar.psi.BnfValueList;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import com.intellij.lang.ASTNode;
 import com.intellij.lang.folding.FoldingBuilderEx;
 import com.intellij.lang.folding.FoldingDescriptor;
@@ -25,13 +35,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.search.PsiElementProcessor;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.intellij.grammar.psi.BnfAttrs;
-import org.intellij.grammar.psi.BnfFile;
-import org.intellij.grammar.psi.BnfRule;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
 
 /**
  * @author gregsh
@@ -48,6 +51,12 @@ public class BnfFoldingBuilder extends FoldingBuilderEx implements DumbAware {
       TextRange textRange = attrs.getTextRange();
       if (textRange.getLength() <= 2) continue;
       result.add(new FoldingDescriptor(attrs, textRange));
+      for (BnfAttr attr : attrs.getAttrList()) {
+        BnfExpression attrValue = attr.getExpression();
+        if (attrValue instanceof BnfValueList && attrValue.getTextLength() > 2) {
+          result.add(new FoldingDescriptor(attrValue, attrValue.getTextRange()));
+        }
+      }
     }
     for (BnfRule rule : file.getRules()) {
       //result.add(new FoldingDescriptor(rule, rule.getTextRange()));
@@ -77,12 +86,15 @@ public class BnfFoldingBuilder extends FoldingBuilderEx implements DumbAware {
     PsiElement psi = node.getPsi();
     if (psi instanceof BnfAttrs) return "{..}";
     if (psi instanceof BnfRule) return ((BnfRule)psi).getName() + " ::= ...";
+    if (psi instanceof BnfValueList) return "[..]";
     if (node.getElementType() == BnfParserDefinition.BNF_BLOCK_COMMENT) return "/*..*/";
     return null;
   }
 
   @Override
   public boolean isCollapsedByDefault(@NotNull ASTNode node) {
-    return false;
+    PsiElement psi = node.getPsi();
+    return psi instanceof BnfValueList ||
+           psi instanceof BnfAttrs && !(psi.getParent() instanceof BnfRule);
   }
 }

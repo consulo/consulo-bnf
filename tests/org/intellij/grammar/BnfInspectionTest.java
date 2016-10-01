@@ -7,7 +7,6 @@ import org.intellij.grammar.inspection.BnfIdenticalChoiceBranchesInspection;
 import org.intellij.grammar.inspection.BnfLeftRecursionInspection;
 import org.intellij.grammar.inspection.BnfSuspiciousTokenInspection;
 import org.intellij.grammar.inspection.BnfUnreachableChoiceBranchInspection;
-import org.mustbe.consulo.roots.impl.ProductionContentFolderTypeProvider;
 import com.intellij.openapi.application.AccessToken;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
@@ -20,6 +19,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase;
+import consulo.roots.impl.ProductionContentFolderTypeProvider;
 
 /**
  * Created by IntelliJ IDEA.

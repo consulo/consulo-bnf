@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2011 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,15 +30,13 @@ public class BnfParenExpressionImpl extends BnfParenthesizedImpl implements BnfP
     super(node);
   }
 
-  public void accept(@NotNull PsiElementVisitor visitor) {
-    if (visitor instanceof BnfVisitor) ((BnfVisitor)visitor).visitParenExpression(this);
-    else super.accept(visitor);
+  public <R> R accept(@NotNull BnfVisitor<R> visitor) {
+    return visitor.visitParenExpression(this);
   }
 
-  @Override
-  @NotNull
-  public BnfExpression getExpression() {
-    return findNotNullChildByClass(BnfExpression.class);
+  public void accept(@NotNull PsiElementVisitor visitor) {
+    if (visitor instanceof BnfVisitor) accept((BnfVisitor)visitor);
+    else super.accept(visitor);
   }
 
 }

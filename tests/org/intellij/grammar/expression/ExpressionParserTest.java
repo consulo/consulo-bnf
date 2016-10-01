@@ -1,11 +1,12 @@
 package org.intellij.grammar.expression;
 
-import com.intellij.testFramework.ParsingTestCase;
+import consulo.testFramework.ParsingTestCase;
 
 /**
  * @author gregsh
  */
-public class ExpressionParserTest extends ParsingTestCase {
+public class ExpressionParserTest extends ParsingTestCase
+{
   public ExpressionParserTest() {
     super("parser/expression", "expr");
   }

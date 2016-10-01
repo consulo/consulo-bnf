@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,534 +16,792 @@
 
 package org.intellij.grammar.java;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
+import java.util.Deque;
 import java.util.List;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.objectweb.asm.AnnotationVisitor;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.commons.EmptyVisitor;
-import org.objectweb.asm.signature.SignatureReader;
-import org.objectweb.asm.signature.SignatureVisitor;
+import org.jetbrains.org.objectweb.asm.AnnotationVisitor;
+import org.jetbrains.org.objectweb.asm.ClassReader;
+import org.jetbrains.org.objectweb.asm.ClassVisitor;
+import org.jetbrains.org.objectweb.asm.MethodVisitor;
+import org.jetbrains.org.objectweb.asm.Opcodes;
+import org.jetbrains.org.objectweb.asm.signature.SignatureReader;
+import org.jetbrains.org.objectweb.asm.signature.SignatureVisitor;
 import com.intellij.navigation.NavigationItem;
 import com.intellij.openapi.components.ServiceManager;
-import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.IndexNotReadyException;
+import com.intellij.openapi.util.Comparing;
 import com.intellij.openapi.util.io.FileUtil;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.FakePsiElement;
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReferenceProvider;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.util.ArrayUtil;
+import com.intellij.util.IncorrectOperationException;
 import com.intellij.util.ObjectUtils;
+import com.intellij.util.containers.ContainerUtil;
+import com.intellij.util.containers.ContainerUtilRt;
 
 /**
  * @author gregsh
  */
-public class JavaHelper {
-	public static JavaHelper getJavaHelper(Project project) {
-		JavaHelper service = ServiceManager.getService(project, JavaHelper.class);
-		return service == null? new JavaHelper() : service;
-	}
+public abstract class JavaHelper {
 
-	@Nullable
-	public PsiReferenceProvider getClassReferenceProvider() { return null; }
-	@Nullable
-	public NavigatablePsiElement findClass(@Nullable String className) { return null; }
-	@Nullable
-	public NavigationItem findPackage(@Nullable String packageName) { return null; }
-	@Nullable
-	public NavigatablePsiElement findClassMethod(@Nullable String className, @Nullable String methodName, int paramCount, @NotNull String... paramTypes) { return null; }
-	@NotNull
-	public List<NavigatablePsiElement> getClassMethods(String className, boolean staticMethods) { return Collections.emptyList(); }
-	@NotNull
-	public List<String> getMethodTypes(@Nullable NavigatablePsiElement method) { return Collections.singletonList("void"); }
-	@NotNull
-	public List<String> getAnnotations(@Nullable NavigatablePsiElement element) { return Collections.emptyList(); }
+  public enum MethodType { STATIC, INSTANCE, CONSTRUCTOR }
 
-	private static class Impl extends JavaHelper {
-		private final JavaPsiFacade myFacade;
+  public static JavaHelper getJavaHelper(@NotNull PsiElement context) {
+    PsiFile file = context.getContainingFile();
+    JavaHelper service = ServiceManager.getService(file.getProject(), JavaHelper.class);
+    return service == null ? new AsmHelper() : service;
+  }
 
-		private Impl(JavaPsiFacade facade) {
-			myFacade = facade;
-		}
+  @Nullable
+  public NavigatablePsiElement findClass(@Nullable String className) {
+    return null;
+  }
 
-		@Override
-		public PsiReferenceProvider getClassReferenceProvider() {
-			JavaClassReferenceProvider provider = new JavaClassReferenceProvider();
-			provider.setSoft(false);
-			return provider;
-		}
+  @NotNull
+  public List<NavigatablePsiElement> findClassMethods(@Nullable String className,
+                                                      @NotNull MethodType methodType,
+                                                      @Nullable String methodName,
+                                                      int paramCount,
+                                                      String... paramTypes) {
+    return Collections.emptyList();
+  }
 
-		@Override
-		public PsiClass findClass(String className) {
-			if (className == null) return null;
-			return myFacade.findClass(className, GlobalSearchScope.allScope(myFacade.getProject()));
-		}
+  @Nullable
+  public String getSuperClassName(@Nullable String className) {
+    return null;
+  }
 
-		@Override
-		public NavigationItem findPackage(String packageName) {
-			return myFacade.findPackage(packageName);
-		}
+  @NotNull
+  public List<String> getMethodTypes(@Nullable NavigatablePsiElement method) {
+    return Collections.emptyList();
+  }
 
-		@Override
-		public PsiMethod findClassMethod(@Nullable String className, @Nullable String methodName, int paramCount, @NotNull String... paramTypes) {
-			PsiClass aClass = className != null ? findClass(className) : null;
-			PsiMethod[] methods = aClass == null || methodName == null? PsiMethod.EMPTY_ARRAY : aClass.findMethodsByName(methodName, true);
-			for (PsiMethod method : methods) {
-				if (paramCount < 0 || paramCount == method.getParameterList().getParametersCount()) {
-					if (paramTypes.length > 0 && !isAssignable(method, paramTypes)) {
-						continue;
-					}
-					return method;
-				}
-			}
-			return ArrayUtil.getFirstElement(methods);
-		}
+  @NotNull
+  public String getDeclaringClass(@Nullable NavigatablePsiElement method) {
+    return "";
+  }
 
-		private static boolean isAssignable(PsiMethod method, String[] paramTypes) {
-			PsiParameterList parameterList = method.getParameterList();
-			if (parameterList.getParametersCount() < paramTypes.length) return false;
-			PsiElementFactory elementFactory = JavaPsiFacade.getElementFactory(method.getProject());
-			PsiParameter[] psiParameters = parameterList.getParameters();
-			boolean result = false;
-			for (int i = 0; i < paramTypes.length; i++) {
-				String paramType = paramTypes[i];
-				PsiParameter parameter = psiParameters[i];
-				PsiType psiType = parameter.getType();
-				PsiType typeFromText = elementFactory.createTypeFromText(paramType, parameter);
-				result = psiType.isAssignableFrom(typeFromText);
-				if (!result) break;
-			}
-			return result;
-		}
+  @NotNull
+  public List<String> getAnnotations(@Nullable NavigatablePsiElement element) {
+    return Collections.emptyList();
+  }
 
-		@NotNull
-		@Override
-		public List<NavigatablePsiElement> getClassMethods(String className, boolean staticMethods) {
-			PsiClass aClass = findClass(className);
-			if (aClass == null) return Collections.emptyList();
-			final ArrayList<NavigatablePsiElement> result = new ArrayList<NavigatablePsiElement>();
-			for (PsiMethod method : aClass.getAllMethods()) {
-				PsiModifierList modifierList = method.getModifierList();
-				if (modifierList.hasExplicitModifier(PsiModifier.PUBLIC) &&
-						staticMethods == modifierList.hasExplicitModifier(PsiModifier.STATIC)) {
-					result.add(method);
-				}
-			}
-			return result;
-		}
+  @Nullable
+  public PsiReferenceProvider getClassReferenceProvider() {
+    return null;
+  }
 
-		@NotNull
-		@Override
-		public List<String> getMethodTypes(NavigatablePsiElement method) {
-			if (method == null) return Collections.emptyList();
-			PsiMethod psiMethod = (PsiMethod)method;
-			PsiType returnType = psiMethod.getReturnType();
-			List<String> strings = new ArrayList<String>();
-			strings.add(returnType == null? "" : returnType.getCanonicalText());
-			for (PsiParameter parameter : psiMethod.getParameterList().getParameters()) {
-				strings.add(parameter.getType().getCanonicalText());
-				strings.add(parameter.getName());
-			}
-			return strings;
-		}
+  @Nullable
+  public NavigationItem findPackage(@Nullable String packageName) {
+    return null;
+  }
 
-		@NotNull
-		@Override
-		public List<String> getAnnotations(NavigatablePsiElement element) {
-			if (element == null) return Collections.emptyList();
-			PsiModifierList modifierList = ((PsiModifierListOwner)element).getModifierList();
-			if (modifierList == null) return super.getAnnotations(element);
-			List<String> strings = new ArrayList<String>();
-			for (PsiAnnotation annotation  : modifierList.getAnnotations()) {
-				if (annotation.getParameterList().getAttributes().length > 0) continue;
-				strings.add(annotation.getQualifiedName());
-			}
-			return strings;
-		}
-	}
 
-	public static class ReflectionHelper extends JavaHelper {
-		@Nullable
-		@Override
-		public NavigatablePsiElement findClass(String className) {
-			if (className == null) return null;
-			try {
-				Class<?> aClass = Class.forName(className);
-				return new MyElement<Class>(aClass);
-			}
-			catch (ClassNotFoundException e) {
-				return null;
-			}
-		}
+  private static boolean acceptsName(@Nullable String expected, @Nullable String actual) {
+    return "*".equals(expected) || expected != null && expected.equals(actual);
+  }
 
-		@Nullable
-		@Override
-		public NavigatablePsiElement findClassMethod(@Nullable String className, @Nullable String methodName, int paramCount, @NotNull String... paramTypes) {
-			if (className == null) return null;
-			try {
-				Class<?> aClass = Class.forName(className);
-				for (Method method : aClass.getDeclaredMethods()) {
-					if (!method.getName().equals(methodName)) continue;
-					if (paramCount < 0 || paramCount + 2 == method.getParameterTypes().length) {
-						return new MyElement<Method>(method);
-					}
-				}
-				return null;
-			}
-			catch (ClassNotFoundException e) {
-				return null;
-			}
-		}
+  private static boolean acceptsModifiers(int modifiers) {
+    return !Modifier.isAbstract(modifiers) &&
+           (Modifier.isPublic(modifiers) || !(Modifier.isPrivate(modifiers) || Modifier.isProtected(modifiers)));
+  }
 
-		@NotNull
-		@Override
-		public List<String> getMethodTypes(NavigatablePsiElement method) {
-			if (method == null) return Collections.emptyList();
-			Method delegate = ((MyElement<Method>) method).myDelegate;
-			Type[] parameterTypes = delegate.getGenericParameterTypes();
-			ArrayList<String> result = new ArrayList<String>(parameterTypes.length + 1);
-			result.add(delegate.getGenericReturnType().toString());
-			int paramCounter = 0;
-			for (Type parameterType : parameterTypes) {
-				result.add(parameterType.toString());
-				result.add("p" + (paramCounter ++));
-			}
-			return result;
-		}
+  private static class PsiHelper extends AsmHelper {
+    private final JavaPsiFacade myFacade;
+    private final PsiElementFactory myElementFactory;
 
-		@NotNull
-		@Override
-		public List<String> getAnnotations(NavigatablePsiElement element) {
-			if (element == null) return Collections.emptyList();
-			AnnotatedElement delegate = ((MyElement<AnnotatedElement>) element).myDelegate;
-			Annotation[] annotations = delegate.getDeclaredAnnotations();
-			ArrayList<String> result = new ArrayList<String>(annotations.length);
-			for (Annotation annotation : annotations) {
-				Class<? extends Annotation> annotationType = annotation.annotationType(); // todo parameters?
-				result.add(annotationType.getCanonicalName());
-			}
-			return result;
-		}
-	}
+    private PsiHelper(JavaPsiFacade facade, PsiElementFactory elementFactory) {
+      myFacade = facade;
+      myElementFactory = elementFactory;
+    }
 
-	public static class AsmHelper extends JavaHelper {
-		@Nullable
-		@Override
-		public NavigatablePsiElement findClass(String className) {
-			if (className == null) return null;
-			try {
-				InputStream is = getClass().getClassLoader().getResourceAsStream(className.replace('.', '/') + ".class");
-				if (is == null) return null;
-				byte[] bytes = FileUtil.loadBytes(is);
-				is.close();
-				ClassInfo info = getClassInfo(className, bytes);
-				return new MyElement<ClassInfo>(info);
-			}
-			catch (IOException e) {
-				return null;
-			}
-		}
+    @Override
+    public PsiReferenceProvider getClassReferenceProvider() {
+      JavaClassReferenceProvider provider = new JavaClassReferenceProvider();
+      provider.setSoft(false);
+      return provider;
+    }
 
-		@Nullable
-		@Override
-		public NavigatablePsiElement findClassMethod(@Nullable String className, @Nullable final String methodName, int paramCount, @NotNull String... paramTypes) {
-			MyElement<ClassInfo> classElement = className == null? null : (MyElement<ClassInfo>)findClass(className);
-			ClassInfo aClass = classElement == null? null : classElement.myDelegate;
-			if (aClass == null) return null;
-			for (MethodInfo method : aClass.methods) {
-				if (!method.name.equals(methodName)) continue;
-				if (paramCount < 0 || paramCount + 2 == method.types.size()) {
-					return new MyElement<MethodInfo>(method);
-				}
-			}
-			return null;
-		}
+    @Override
+    public NavigatablePsiElement findClass(String className) {
+      PsiClass aClass = findClassSafe(className);
+      return aClass != null ? aClass : super.findClass(className);
+    }
 
-		@NotNull
-		@Override
-		public List<String> getMethodTypes(NavigatablePsiElement method) {
-			if (method == null) return Collections.emptyList();
-			MethodInfo signature = ((MyElement<MethodInfo>) method).myDelegate;
-			return signature.types;
-		}
+    private PsiClass findClassSafe(String className) {
+      if (className == null) return null;
+      try {
+        return myFacade.findClass(className, GlobalSearchScope.allScope(myFacade.getProject()));
+      }
+      catch (IndexNotReadyException e) {
+        return null;
+      }
+    }
 
-		@NotNull
-		@Override
-		public List<String> getAnnotations(NavigatablePsiElement element) {
-			Object delegate = element == null? null : ((MyElement<?>) element).myDelegate;
-			if (delegate instanceof ClassInfo) return ((ClassInfo) delegate).annotations;
-			if (delegate instanceof MethodInfo) return ((MethodInfo) delegate).annotations;
-			return Collections.emptyList();
-		}
+    @Override
+    public NavigationItem findPackage(String packageName) {
+      return myFacade.findPackage(packageName);
+    }
 
-		private static ClassInfo getClassInfo(String className, byte[] bytes) {
-			final ClassInfo info = new ClassInfo();
-			info.name = className;
-			new ClassReader(bytes).accept(new MyClassVisitor(info), 0);
-			return info;
-		}
+    @NotNull
+    @Override
+    public List<NavigatablePsiElement> findClassMethods(@Nullable String className,
+                                                        @NotNull MethodType methodType,
+                                                        @Nullable String methodName,
+                                                        int paramCount,
+                                                        String... paramTypes) {
+      if (methodName == null) return Collections.emptyList();
+      PsiClass aClass = findClassSafe(className);
+      if (aClass == null) return super.findClassMethods(className, methodType, methodName, paramCount, paramTypes);
+      List<NavigatablePsiElement> result = ContainerUtil.newArrayList();
+      PsiMethod[] methods = methodType == MethodType.CONSTRUCTOR ? aClass.getConstructors() : aClass.getMethods();
+      for (PsiMethod method : methods) {
+        if (!acceptsName(methodName, method.getName())) continue;
+        if (!acceptsMethod(method, methodType == MethodType.STATIC)) continue;
+        if (!acceptsMethod(myElementFactory, method, paramCount, paramTypes)) continue;
+        result.add(method);
+      }
+      return result;
+    }
 
-		private static MethodInfo getMethodInfo(String className, String methodName, String signature) {
-			final MethodInfo methodInfo = new MethodInfo();
-			methodInfo.name = methodName;
+    @Nullable
+    @Override
+    public String getSuperClassName(@Nullable String className) {
+      PsiClass aClass = findClassSafe(className);
+      PsiClass superClass = aClass != null ? aClass.getSuperClass() : null;
+      return superClass != null ? superClass.getQualifiedName() : super.getSuperClassName(className);
+    }
 
-			try {
-				MySignatureVisitor visitor = new MySignatureVisitor(methodInfo);
-				new SignatureReader(signature).accept(visitor);
-				visitor.finishElement(null);
-			}
-			catch (Exception e) {
-				System.err.println(e.getClass().getSimpleName() + " in parsing " + className+"."+methodName +"() signature: " + signature);
-			}
-			return methodInfo;
-		}
+    private static boolean acceptsMethod(PsiElementFactory elementFactory,
+                                         PsiMethod method,
+                                         int paramCount,
+                                         String... paramTypes) {
+      PsiParameterList parameterList = method.getParameterList();
+      if (paramCount >= 0 && paramCount != parameterList.getParametersCount()) return false;
+      if (paramTypes.length == 0) return true;
+      if (parameterList.getParametersCount() < paramTypes.length) return false;
+      PsiParameter[] psiParameters = parameterList.getParameters();
+      for (int i = 0; i < paramTypes.length; i++) {
+        String paramType = paramTypes[i];
+        PsiParameter parameter = psiParameters[i];
+        PsiType psiType = parameter.getType();
+        if (acceptsName(paramType, psiType.getCanonicalText())) continue;
+        try {
+          if (psiType.isAssignableFrom(elementFactory.createTypeFromText(paramType, parameter))) continue;
+        }
+        catch (IncorrectOperationException ignored) {
+        }
+        return false;
+      }
+      return true;
+    }
 
-		private static class MyClassVisitor extends EmptyVisitor {
-			enum State {CLASS, METHOD, ANNO }
+    private static boolean acceptsMethod(PsiMethod method, boolean staticMethods) {
+      PsiModifierList modifierList = method.getModifierList();
+      return staticMethods == modifierList.hasModifierProperty(PsiModifier.STATIC) &&
+             !modifierList.hasModifierProperty(PsiModifier.ABSTRACT) &&
+             (modifierList.hasModifierProperty(PsiModifier.PUBLIC) ||
+              !(modifierList.hasModifierProperty(PsiModifier.PROTECTED) ||
+                modifierList.hasModifierProperty(PsiModifier.PRIVATE)));
+    }
 
-			private final ClassInfo myInfo;
+    @NotNull
+    @Override
+    public List<String> getMethodTypes(NavigatablePsiElement method) {
+      if (!(method instanceof PsiMethod)) return super.getMethodTypes(method);
+      PsiMethod psiMethod = (PsiMethod)method;
+      PsiType returnType = psiMethod.getReturnType();
+      List<String> strings = new ArrayList<String>();
+      strings.add(returnType == null ? "" : returnType.getCanonicalText());
+      for (PsiParameter parameter : psiMethod.getParameterList().getParameters()) {
+        PsiType type = parameter.getType();
+        boolean generic = type instanceof PsiClassType && ((PsiClassType)type).resolve() instanceof PsiTypeParameter;
+        strings.add((generic ? "<" : "") + type.getCanonicalText(false) + (generic ? ">" : ""));
+        strings.add(parameter.getName());
+      }
+      return strings;
+    }
 
-			MyClassVisitor(ClassInfo info) {
-				myInfo = info;
-				state = State.CLASS;
-			}
+    @NotNull
+    @Override
+    public String getDeclaringClass(@Nullable NavigatablePsiElement method) {
+      if (!(method instanceof PsiMethod)) return super.getDeclaringClass(method);
+      PsiMethod psiMethod = (PsiMethod)method;
+      PsiClass aClass = psiMethod.getContainingClass();
+      return aClass == null ? "" : StringUtil.notNullize(aClass.getQualifiedName());
+    }
 
-			private State state;
+    @NotNull
+    @Override
+    public List<String> getAnnotations(NavigatablePsiElement element) {
+      if (!(element instanceof PsiModifierListOwner)) return super.getAnnotations(element);
+      PsiModifierList modifierList = ((PsiModifierListOwner)element).getModifierList();
+      if (modifierList == null) return ContainerUtilRt.emptyList();
+      List<String> strings = new ArrayList<String>();
+      for (PsiAnnotation annotation : modifierList.getAnnotations()) {
+        if (annotation.getParameterList().getAttributes().length > 0) continue;
+        strings.add(annotation.getQualifiedName());
+      }
+      return strings;
+    }
+  }
 
-			private MethodInfo methodInfo;
-			private String annoDesc;
-			private int annoParamCounter;
+  public static class ReflectionHelper extends JavaHelper {
+    @Nullable
+    @Override
+    public NavigatablePsiElement findClass(String className) {
+      Class<?> aClass = findClassSafe(className);
+      return aClass == null ? null : new MyElement<Class>(aClass);
+    }
 
-			@Override
-			public void visitEnd() {
-				if (state == State.METHOD) {
-					state = State.CLASS;
-					myInfo.methods.add(methodInfo);
-					methodInfo = null;
-				}
-				else if (state == State.ANNO) {
-					state = State.METHOD;
-					if (annoParamCounter == 0) {
-						methodInfo.annotations.add(annoDesc.substring(1, annoDesc.length()-1).replace('/', '.'));
-					}
-					annoParamCounter = 0;
-					annoDesc = null;
-				}
-			}
+    @Nullable
+    private static Class<?> findClassSafe(String className) {
+      if (className == null) return null;
+      try {
+        return Class.forName(className);
+      }
+      catch (Exception e) {
+        return null;
+      }
+    }
 
-			@Override
-			public MethodVisitor visitMethod(int access,
-					String name,
-					String desc,
-					String signature,
-					String[] exceptions) {
-				state = State.METHOD;
-				methodInfo = getMethodInfo(myInfo.name, name, ObjectUtils.chooseNotNull(signature, desc));
-				return this; // visit annotations
-			}
+    @NotNull
+    @Override
+    public List<NavigatablePsiElement> findClassMethods(@Nullable String className,
+                                                        @NotNull MethodType methodType,
+                                                        @Nullable String methodName,
+                                                        int paramCount,
+                                                        String... paramTypes) {
+      Class<?> aClass = findClassSafe(className);
+      if (aClass == null || methodName == null) return Collections.emptyList();
+      List<NavigatablePsiElement> result = ContainerUtil.newArrayList();
+      Member[] methods = methodType == MethodType.CONSTRUCTOR ? aClass.getDeclaredConstructors() : aClass.getDeclaredMethods();
+      for (Member method : methods) {
+        if (!acceptsName(methodName, method.getName())) continue;
+        if (!acceptsMethod(method, methodType == MethodType.STATIC)) continue;
+        if (!acceptsMethod(method, paramCount, paramTypes)) continue;
+        result.add(new MyElement<Member>(method));
+      }
+      return result;
+    }
 
-			@Override
-			public AnnotationVisitor visitAnnotation(String s, boolean b) {
-				if (state == State.METHOD) {
-					state = State.ANNO;
-					annoDesc = s;
-					return this;
-				}
-				return null;
-			}
+    @Nullable
+    @Override
+    public String getSuperClassName(@Nullable String className) {
+      Class<?> aClass = findClassSafe(className);
+      Class<?> superClass = aClass == null ? null : aClass.getSuperclass();
+      return superClass != null && superClass != Object.class ? superClass.getName() : null;
+    }
 
-			@Override
-			public void visit(String s, Object o) {
-				annoParamCounter ++;
-			}
+    private static boolean acceptsMethod(Member method, int paramCount, String... paramTypes) {
+      Class<?>[] parameterTypes = method instanceof Method? ((Method)method).getParameterTypes() :
+                                  method instanceof Constructor ? ((Constructor)method).getParameterTypes() :
+                                  ArrayUtil.EMPTY_CLASS_ARRAY;
+      if (paramCount >= 0 && paramCount != parameterTypes.length) return false;
+      if (paramTypes.length == 0) return true;
+      if (paramTypes.length > parameterTypes.length) return false;
+      for (int i = 0; i < paramTypes.length; i++) {
+        String paramType = paramTypes[i];
+        Class<?> parameter = parameterTypes[i];
+        if (acceptsName(paramType, parameter.getCanonicalName())) continue;
+        Class<?> paramClass = findClassSafe(paramType);
+        if (paramClass != null && parameter.isAssignableFrom(paramClass)) continue;
+        return false;
+      }
+      return true;
+    }
 
-			@Override
-			public void visitEnum(String s, String s2, String s3) {
-				annoParamCounter ++;
-			}
+    private static boolean acceptsMethod(Member method, boolean staticMethods) {
+      int modifiers = method.getModifiers();
+      return staticMethods == Modifier.isStatic(modifiers) && acceptsModifiers(modifiers);
+    }
 
-			@Override
-			public AnnotationVisitor visitAnnotation(String s, String s2) {
-				annoParamCounter ++;
-				return null;
-			}
+    @NotNull
+    @Override
+    public List<String> getMethodTypes(NavigatablePsiElement method) {
+      if (method == null) return Collections.emptyList();
+      Method delegate = ((MyElement<Method>)method).myDelegate;
+      Type[] parameterTypes = delegate.getGenericParameterTypes();
+      List<String> result = new ArrayList<String>(parameterTypes.length + 1);
+      result.add(delegate.getGenericReturnType().toString());
+      int paramCounter = 0;
+      for (Type parameterType : parameterTypes) {
+        result.add(parameterType.toString());
+        result.add("p" + (paramCounter++));
+      }
+      return result;
+    }
 
-			@Override
-			public AnnotationVisitor visitArray(String s) {
-				annoParamCounter ++;
-				return null;
-			}
-		}
+    @NotNull
+    @Override
+    public String getDeclaringClass(@Nullable NavigatablePsiElement method) {
+      if (method == null) return "";
+      return ((MyElement<Method>)method).myDelegate.getDeclaringClass().getName();
+    }
 
-		private static class MySignatureVisitor implements SignatureVisitor {
-			enum State {PARAM, RETURN, CLASS, ARRAY, GENERIC}
+    @NotNull
+    @Override
+    public List<String> getAnnotations(NavigatablePsiElement element) {
+      if (element == null) return Collections.emptyList();
+      AnnotatedElement delegate = ((MyElement<AnnotatedElement>)element).myDelegate;
+      Annotation[] annotations = delegate.getDeclaredAnnotations();
+      List<String> result = new ArrayList<String>(annotations.length);
+      for (Annotation annotation : annotations) {
+        Class<? extends Annotation> annotationType = annotation.annotationType(); // todo parameters?
+        result.add(annotationType.getCanonicalName());
+      }
+      return result;
+    }
+  }
 
-			private final MethodInfo myMethodInfo;
-			private final LinkedList<State> states = new LinkedList<State>();
+  public static class AsmHelper extends JavaHelper {
+    @Nullable
+    @Override
+    public NavigatablePsiElement findClass(String className) {
+      ClassInfo info = findClassSafe(className);
+      return info == null ? null : new MyElement<ClassInfo>(info);
+    }
 
-			private final StringBuilder myBuilder = new StringBuilder();
+    @NotNull
+    @Override
+    public List<NavigatablePsiElement> findClassMethods(@Nullable String className,
+                                                        @NotNull MethodType methodType,
+                                                        @Nullable final String methodName,
+                                                        int paramCount,
+                                                        String... paramTypes) {
+      ClassInfo aClass = findClassSafe(className);
+      if (aClass == null || methodName == null) return Collections.emptyList();
+      List<NavigatablePsiElement> result = ContainerUtil.newArrayList();
+      for (MethodInfo method : aClass.methods) {
+        if (!acceptsName(methodName, method.name)) continue;
+        if (!acceptsMethod(method, methodType)) continue;
+        if (!acceptsMethod(method, paramCount, paramTypes)) continue;
+        result.add(new MyElement<MethodInfo>(method));
+      }
+      return result;
+    }
 
-			MySignatureVisitor(MethodInfo methodInfo) {
-				myMethodInfo = methodInfo;
-			}
+    @Nullable
+    @Override
+    public String getSuperClassName(@Nullable String className) {
+      ClassInfo aClass = findClassSafe(className);
+      return aClass == null ? null : aClass.superClass;
+    }
 
-			@Override
-			public void visitFormalTypeParameter(String s) {
-			}
+    private static boolean acceptsMethod(MethodInfo method, int paramCount, String... paramTypes) {
+      if (paramCount >= 0 && paramCount + 1 != method.types.size()) return false;
+      if (paramTypes.length == 0) return true;
+      if (paramTypes.length + 1 > method.types.size()) return false;
+      for (int i = 0; i < paramTypes.length; i++) {
+        String paramType = paramTypes[i];
+        String parameter = method.types.get(i + 1);
+        if (acceptsName(paramType, parameter)) continue;
+        ClassInfo info = findClassSafe(paramType);
+        if (info != null) {
+          if (Comparing.equal(info.superClass, parameter)) continue;
+          if (info.interfaces.contains(parameter)) continue;
+        }
+        return false;
+      }
+      return true;
+    }
 
-			@Override
-			public SignatureVisitor visitClassBound() {
-				return null;
-			}
+    private static boolean acceptsMethod(MethodInfo method, MethodType methodType) {
+      return method.methodType == methodType && acceptsModifiers(method.modifiers);
+    }
 
-			@Override
-			public SignatureVisitor visitInterfaceBound() {
-				return this;
-			}
+    @NotNull
+    @Override
+    public List<String> getMethodTypes(NavigatablePsiElement method) {
+      if (method == null) return Collections.emptyList();
+      MethodInfo signature = ((MyElement<MethodInfo>)method).myDelegate;
+      return signature.types;
+    }
 
-			@Override
-			public SignatureVisitor visitSuperclass() {
-				return null;
-			}
+    @NotNull
+    @Override
+    public String getDeclaringClass(@Nullable NavigatablePsiElement method) {
+      if (method == null) return "";
+      return ((MyElement<MethodInfo>)method).myDelegate.declaringClass;
+    }
 
-			@Override
-			public SignatureVisitor visitInterface() {
-				return null;
-			}
+    @NotNull
+    @Override
+    public List<String> getAnnotations(NavigatablePsiElement element) {
+      Object delegate = element == null ? null : ((MyElement<?>)element).myDelegate;
+      if (delegate instanceof ClassInfo) return ((ClassInfo)delegate).annotations;
+      if (delegate instanceof MethodInfo) return ((MethodInfo)delegate).annotations;
+      return Collections.emptyList();
+    }
 
-			@Override
-			public SignatureVisitor visitParameterType() {
-				finishElement(null);
-				states.push(State.PARAM);
-				return this;
-			}
+    private static ClassInfo findClassSafe(String className) {
+      if (className == null) return null;
+      try {
+        int lastDot = className.length();
+        InputStream is;
+        do {
+          String s = className.substring(0, lastDot).replace('.', '/') +
+                     className.substring(lastDot).replace('.', '$') +
+                     ".class";
+          is = JavaHelper.class.getClassLoader().getResourceAsStream(s);
+          lastDot = className.lastIndexOf('.', lastDot - 1);
+        }
+        while(is == null && lastDot > 0);
 
-			@Override
-			public SignatureVisitor visitReturnType() {
-				finishElement(null);
-				states.push(State.RETURN);
-				return this;
-			}
+        if (is == null) return null;
+        byte[] bytes = FileUtil.loadBytes(is);
+        is.close();
+        return getClassInfo(className, bytes);
+      }
+      catch (Exception e) {
+        reportException(e, className, null);
+      }
+      return null;
+    }
 
-			@Override
-			public SignatureVisitor visitExceptionType() {
-				return null;
-			}
+    private static ClassInfo getClassInfo(String className, byte[] bytes) {
+      final ClassInfo info = new ClassInfo();
+      info.name = className;
+      new ClassReader(bytes).accept(new MyClassVisitor(info), 0);
+      return info;
+    }
 
-			@Override
-			public void visitBaseType(char c) {
-				myBuilder.append(org.objectweb.asm.Type.getType(String.valueOf(c)).getClassName());
-			}
+    private static MethodInfo getMethodInfo(String className, String methodName, String signature) {
+      final MethodInfo methodInfo = new MethodInfo();
+      methodInfo.name = methodName;
+      methodInfo.declaringClass = className;
 
-			@Override
-			public void visitTypeVariable(String s) {
-			}
+      try {
+        MySignatureVisitor visitor = new MySignatureVisitor(methodInfo);
+        new SignatureReader(signature).accept(visitor);
+        visitor.finishElement(null);
+      }
+      catch (Exception e) {
+        reportException(e, className + "#" + methodName + "()", signature);
+      }
+      return methodInfo;
+    }
 
-			@Override
-			public SignatureVisitor visitArrayType() {
-				states.push(State.ARRAY);
-				return this;
-			}
+    private static void reportException(Exception e, String target, String signature) {
+      //noinspection UseOfSystemOutOrSystemErr
+      System.err.println(e.getClass().getSimpleName() + " while reading " + target +
+                         (signature == null ? "" : " signature " + signature));
+    }
 
-			@Override
-			public void visitClassType(String s) {
-				states.push(State.CLASS);
-				myBuilder.append(s.replace('/', '.'));
-			}
+    private static class MyClassVisitor extends ClassVisitor {
 
-			@Override
-			public void visitInnerClassType(String s) {
-			}
+      private final ClassInfo myInfo;
 
-			@Override
-			public void visitTypeArgument() {
-				states.push(State.GENERIC);
-				myBuilder.append("<");
-			}
+      MyClassVisitor(ClassInfo info) {
+        super(Opcodes.ASM5);
+        myInfo = info;
+      }
 
-			@Override
-			public SignatureVisitor visitTypeArgument(char c) {
-				if (states.peekFirst() == State.CLASS) {
-					states.push(State.GENERIC);
-					myBuilder.append("<");
-				}
-				else {
-					finishElement(State.GENERIC);
-					myBuilder.append(", ");
-				}
-				return this;
-			}
+      public void visit(int version,
+                        int access,
+                        String name,
+                        String signature,
+                        String superName,
+                        String[] interfaces) {
+        myInfo.superClass = fixClassName(superName);
+        for (String s : interfaces) {
+          myInfo.interfaces.add(fixClassName(s));
+        }
+        if (signature != null) {
+          new SignatureReader(signature).accept(new SignatureVisitor(Opcodes.ASM5) {
+            @Override
+            public void visitFormalTypeParameter(String name) {
+              myInfo.typeParameters.add(name);
+            }
+          });
+        }
+      }
 
-			@Override
-			public void visitEnd() {
-				finishElement(State.CLASS);
-				states.pop();
-			}
+      @Override
+      public void visitEnd() {
+      }
 
-			private void finishElement(State finishState) {
-				if (myBuilder.length() == 0) return;
-				main: while (!states.isEmpty()) {
-					if (finishState == states.peekFirst()) break;
-					State state = states.pop();
-					switch (state) {
-						case PARAM:
-							myMethodInfo.types.add(myBuilder.toString());
-							myMethodInfo.types.add("p" + (myMethodInfo.types.size() / 2));
-							myBuilder.setLength(0);
-							break main;
-						case RETURN:
-							myMethodInfo.types.add(0, myBuilder.toString());
-							myBuilder.setLength(0);
-							break main;
-						case ARRAY:
-							myBuilder.append("[]");
-							break;
-						case GENERIC:
-							myBuilder.append(">");
-							break;
-						case CLASS:
-							break;
-					}
-				}
-			}
-		}
-	}
+      @Override
+      public MethodVisitor visitMethod(int access,
+                                       String name,
+                                       String desc,
+                                       String signature,
+                                       String[] exceptions) {
+        final MethodInfo m = getMethodInfo(myInfo.name, name, ObjectUtils.chooseNotNull(signature, desc));
+        m.modifiers = access;
+        m.methodType = "<init>".equals(name)? MethodType.CONSTRUCTOR :
+                                Modifier.isStatic(access) ? MethodType.STATIC :
+                                MethodType.INSTANCE;
+        myInfo.methods.add(m);
+        return new MethodVisitor(Opcodes.ASM5) {
+          @Override
+          public AnnotationVisitor visitAnnotation(final String desc, boolean visible) {
+            return new MyAnnotationVisitor() {
+              @Override
+              public void visitEnd() {
+                if (annoParamCounter == 0) {
+                  m.annotations.add(fixClassName(desc.substring(1, desc.length() - 1)));
+                }
+              }
+            };
+          }
+        };
+      }
 
-	private static class MyElement<T> extends FakePsiElement implements NavigatablePsiElement {
+      class MyAnnotationVisitor extends AnnotationVisitor {
+        int annoParamCounter;
 
-		private final T myDelegate;
+        MyAnnotationVisitor() {
+          super(Opcodes.ASM5);
+        }
 
-		MyElement(T delegate) {
-			myDelegate = delegate;
-		}
+        @Override
+        public void visit(String s, Object o) {
+          annoParamCounter++;
+        }
 
-		@Override
-		public PsiElement getParent() {
-			return null;
-		}
-	}
+        @Override
+        public void visitEnum(String s, String s2, String s3) {
+          annoParamCounter++;
+        }
 
-	private static class ClassInfo {
-		String name;
-		List<String> annotations = new ArrayList<String>(0);
-		List<MethodInfo> methods = new ArrayList<MethodInfo>(0);
-	}
+        @Override
+        public AnnotationVisitor visitAnnotation(String s, String s2) {
+          annoParamCounter++;
+          return null;
+        }
 
-	private static class MethodInfo {
-		String name;
-		List<String> annotations = new ArrayList<String>(0);
-		List<String> types = new ArrayList<String>(0);
-	}
+        @Override
+        public AnnotationVisitor visitArray(String s) {
+          annoParamCounter++;
+          return null;
+        }
+      }
+    }
+
+    private static String fixClassName(String s) {
+      return s == null ? null : s.replace('/', '.').replace('$', '.');
+    }
+
+    private static class MySignatureVisitor extends SignatureVisitor {
+      enum State {PARAM, RETURN, CLASS, ARRAY, GENERIC, BOUNDS, EXCEPTION}
+
+      final MethodInfo methodInfo;
+      final Deque<State> states = new ArrayDeque<State>();
+
+      /** @noinspection StringBufferField*/
+      final StringBuilder sb = new StringBuilder();
+
+      MySignatureVisitor(MethodInfo methodInfo) {
+        super(Opcodes.ASM5);
+        this.methodInfo = methodInfo;
+      }
+
+      @Override
+      public void visitFormalTypeParameter(String s) {
+        // collect them
+      }
+
+      @Override
+      public SignatureVisitor visitInterfaceBound() {
+        finishElement(null);
+        states.push(State.BOUNDS);
+        return this;
+      }
+
+      @Override
+      public SignatureVisitor visitSuperclass() {
+        finishElement(null);
+        states.push(State.BOUNDS);
+        return this;
+      }
+
+      @Override
+      public SignatureVisitor visitInterface() {
+        finishElement(null);
+        states.push(State.BOUNDS);
+        return this;
+      }
+
+      @Override
+      public SignatureVisitor visitParameterType() {
+        finishElement(null);
+        states.push(State.PARAM);
+        return this;
+      }
+
+      @Override
+      public SignatureVisitor visitReturnType() {
+        finishElement(null);
+        states.push(State.RETURN);
+        return this;
+      }
+
+      @Override
+      public SignatureVisitor visitExceptionType() {
+        finishElement(null);
+        states.push(State.EXCEPTION);
+        return this;
+      }
+
+      @Override
+      public void visitBaseType(char c) {
+        sb.append(org.jetbrains.org.objectweb.asm.Type.getType(String.valueOf(c)).getClassName());
+      }
+
+      @Override
+      public void visitTypeVariable(String s) {
+        sb.append("<").append(s).append(">");
+      }
+
+      @Override
+      public SignatureVisitor visitArrayType() {
+        states.push(State.ARRAY);
+        return this;
+      }
+
+      @Override
+      public void visitClassType(String s) {
+        states.push(State.CLASS);
+        sb.append(fixClassName(s));
+      }
+
+      @Override
+      public void visitInnerClassType(String s) {
+      }
+
+      @Override
+      public void visitTypeArgument() {
+        states.push(State.GENERIC);
+        sb.append("<");
+      }
+
+      @Override
+      public SignatureVisitor visitTypeArgument(char c) {
+        if (states.peekFirst() == State.CLASS) {
+          states.push(State.GENERIC);
+          sb.append("<");
+        }
+        else {
+          finishElement(State.GENERIC);
+          sb.append(", ");
+        }
+        return this;
+      }
+
+      @Override
+      public void visitEnd() {
+        finishElement(State.CLASS);
+        states.pop();
+      }
+
+      private void finishElement(State finishState) {
+        if (sb.length() == 0) return;
+        main:
+        while (!states.isEmpty()) {
+          if (finishState == states.peekFirst()) break;
+          State state = states.pop();
+          switch (state) {
+            case PARAM:
+              methodInfo.types.add(sb.toString());
+              methodInfo.types.add("p" + (methodInfo.types.size() / 2));
+              sb.setLength(0);
+              break main;
+            case RETURN:
+              methodInfo.types.add(0, sb.toString());
+              sb.setLength(0);
+              break main;
+            case ARRAY:
+              sb.append("[]");
+              break;
+            case GENERIC:
+              sb.append(">");
+              break;
+            case CLASS:
+            case BOUNDS:
+              break;
+          }
+        }
+      }
+    }
+  }
+
+  private static class MyElement<T> extends FakePsiElement implements NavigatablePsiElement {
+
+    private final T myDelegate;
+
+    MyElement(T delegate) {
+      myDelegate = delegate;
+    }
+
+    @Override
+    public PsiElement getParent() {
+      return null;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      MyElement element = (MyElement)o;
+
+      if (!myDelegate.equals(element.myDelegate)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      return myDelegate.hashCode();
+    }
+
+    @Override
+    public String toString() {
+      return myDelegate.toString();
+    }
+  }
+
+  private static class ClassInfo {
+    String name;
+    String superClass;
+    List<String> typeParameters= ContainerUtil.newSmartList();
+    List<String> interfaces = ContainerUtil.newSmartList();
+    List<String> annotations = ContainerUtil.newSmartList();
+    List<MethodInfo> methods = ContainerUtil.newSmartList();
+  }
+
+  private static class MethodInfo {
+    MethodType methodType;
+    String name;
+    String declaringClass;
+    int modifiers;
+    List<String> annotations = ContainerUtil.newSmartList();
+    List<String> types = ContainerUtil.newSmartList();
+
+    @Override
+    public String toString() {
+      return "MethodInfo" +
+             "{" + name + types +
+             ", @" + annotations +
+             '}';
+    }
+  }
 
 }

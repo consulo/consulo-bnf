@@ -3,12 +3,13 @@ package org.intellij.grammar;
 import java.io.IOException;
 
 import org.jetbrains.annotations.NonNls;
-import com.intellij.testFramework.ParsingTestCase;
+import consulo.testFramework.ParsingTestCase;
 
 /**
  * @author gregsh
  */
-public class BnfParserTest extends ParsingTestCase {
+public class BnfParserTest extends ParsingTestCase
+{
   public BnfParserTest() {
     super("parser", "bnf");
   }

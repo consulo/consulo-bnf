@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@ package org.intellij.grammar.psi.impl;
 
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.intellij.lang.ASTNode;
-import org.intellij.grammar.psi.BnfCompositeElement;
+import com.intellij.openapi.util.text.StringUtil;
+import org.intellij.grammar.psi.*;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Created by IntelliJ IDEA.
@@ -30,8 +32,25 @@ public class BnfCompositeElementImpl extends ASTWrapperPsiElement implements Bnf
     super(node);
   }
 
+  /** @noinspection InstanceofThis*/
   @Override
   public String toString() {
-    return getNode().getElementType().toString();
+    String elementType = getNode().getElementType().toString();
+    boolean addText = this instanceof BnfExpression && !(this instanceof BnfValueList);
+    if (addText) {
+      String text = getText();
+      if (!(this instanceof BnfLiteralExpression) && text.length() > 50) {
+        text = text.substring(0, 30) + " ... " + text.substring(text.length() - 20, text.length());
+      }
+      return elementType + (StringUtil.isEmptyOrSpaces(text)? "" : ": " + text);
+    }
+    else {
+      return elementType;
+    }
+  }
+
+  @Override
+  public <R> R accept(@NotNull BnfVisitor<R> visitor) {
+    return visitor.visitCompositeElement(this);
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
  */
 package org.intellij.grammar;
 
-import com.intellij.openapi.fileTypes.LanguageFileType;
-import org.jetbrains.annotations.NotNull;
+import javax.swing.Icon;
 
-import javax.swing.*;
+import org.jetbrains.annotations.NotNull;
+import com.intellij.openapi.fileTypes.LanguageFileType;
 
 /**
  * Created by IntelliJ IDEA.
@@ -28,7 +28,7 @@ import javax.swing.*;
  */
 public class BnfFileType extends LanguageFileType {
 
-  public static BnfFileType INSTANCE = new BnfFileType();
+  public static final BnfFileType INSTANCE = new BnfFileType();
 
   protected BnfFileType() {
     super(BnfLanguage.INSTANCE);
@@ -37,7 +37,7 @@ public class BnfFileType extends LanguageFileType {
   @NotNull
   @Override
   public String getName() {
-    return "Grammar";
+    return "BNF";
   }
 
   @NotNull

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,17 +23,20 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ArrayUtil;
+import com.intellij.util.IncorrectOperationException;
+import com.intellij.util.ObjectUtils;
+import com.intellij.util.containers.ContainerUtil;
 import org.intellij.grammar.KnownAttribute;
 import org.intellij.grammar.java.JavaHelper;
 import org.intellij.grammar.psi.BnfAttr;
 import org.intellij.grammar.psi.BnfListEntry;
 import org.intellij.grammar.psi.BnfLiteralExpression;
+import org.intellij.grammar.psi.BnfRule;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.intellij.grammar.generator.ParserGeneratorUtil.getRootAttribute;
+import static org.intellij.grammar.generator.ParserGeneratorUtil.*;
 
 /**
  * @author gregsh
@@ -47,26 +50,42 @@ public class GrammarPsiImplUtil {
     BnfLiteralExpression value = o.getLiteralExpression();
     if (id == null || value != null) return PsiReference.EMPTY_ARRAY;
     final String psiImplUtilClass = getRootAttribute(attr, KnownAttribute.PSI_IMPL_UTIL_CLASS);
-    final JavaHelper javaHelper = JavaHelper.getJavaHelper(o.getProject());
+    final JavaHelper javaHelper = JavaHelper.getJavaHelper(o);
+
     return new PsiReference[] {
-      new PsiReferenceBase<BnfListEntry>(o, TextRange.from(id.getStartOffsetInParent(), id.getTextLength())) {
+      new PsiPolyVariantReferenceBase<BnfListEntry>(o, TextRange.from(id.getStartOffsetInParent(), id.getTextLength())) {
+
+        private List<NavigatablePsiElement> getTargetMethods(String methodName) {
+          BnfRule rule = PsiTreeUtil.getParentOfType(getElement(), BnfRule.class);
+          String mixinClass = rule == null ? null : getAttribute(rule, KnownAttribute.MIXIN);
+          List<NavigatablePsiElement> implMethods = findRuleImplMethods(javaHelper, psiImplUtilClass, methodName, rule);
+          if (!implMethods.isEmpty()) return implMethods;
+          List<NavigatablePsiElement> mixinMethods = javaHelper.findClassMethods(mixinClass, JavaHelper.MethodType.INSTANCE, methodName, -1);
+          return ContainerUtil.concat(implMethods, mixinMethods);
+        }
+
+        @NotNull
         @Override
-        public PsiElement resolve() {
-          return javaHelper.findClassMethod(psiImplUtilClass, getElement().getText(), -1);
+        public ResolveResult[] multiResolve(boolean b) {
+          return PsiElementResolveResult.createResults(getTargetMethods(getElement().getText()));
         }
 
         @NotNull
         @Override
         public Object[] getVariants() {
-          final ArrayList<LookupElement> list = new ArrayList<LookupElement>();
-          //ParserGeneratorUtil.getQualifiedRuleClassName(rule, false)
-          for (NavigatablePsiElement element : javaHelper.getClassMethods(psiImplUtilClass, true)) {
-            List<String> methodTypes = javaHelper.getMethodTypes(element);
-            if (methodTypes.size() > 1) {
-              list.add(LookupElementBuilder.createWithIcon((PsiNamedElement)element));
-            }
+          List<LookupElement> list = ContainerUtil.newArrayList();
+          for (NavigatablePsiElement element : getTargetMethods("*")) {
+            list.add(LookupElementBuilder.createWithIcon((PsiNamedElement)element));
           }
           return ArrayUtil.toObjectArray(list);
+        }
+
+        @Override
+        public PsiElement handleElementRename(String newElementName) throws IncorrectOperationException {
+          BnfListEntry element = getElement();
+          PsiElement id = ObjectUtils.assertNotNull(element.getId());
+          id.replace(BnfElementFactory.createLeafFromText(element.getProject(), newElementName));
+          return element;
         }
       }
     };

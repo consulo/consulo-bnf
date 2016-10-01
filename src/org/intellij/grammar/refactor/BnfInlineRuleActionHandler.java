@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Gregory Shrago
+ * Copyright 2011-present Greg Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,9 @@ package org.intellij.grammar.refactor;
 import java.util.Collection;
 
 import org.intellij.grammar.BnfLanguage;
-import org.intellij.grammar.psi.BnfAttr;
 import org.intellij.grammar.psi.BnfAttrs;
 import org.intellij.grammar.psi.BnfRule;
-import com.intellij.codeInsight.TargetElementUtil;
+import org.intellij.grammar.psi.impl.GrammarUtil;
 import com.intellij.lang.Language;
 import com.intellij.lang.refactoring.InlineActionHandler;
 import com.intellij.openapi.editor.Editor;
@@ -32,6 +31,7 @@ import com.intellij.psi.PsiReference;
 import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.refactoring.util.CommonRefactoringUtil;
+import consulo.codeInsight.TargetElementUtil;
 
 /**
  * Created by IntelliJ IDEA.
@@ -71,11 +71,16 @@ public class BnfInlineRuleActionHandler extends InlineActionHandler {
       return;
     }
 
-    for (PsiReference psiReference : allReferences) {
-      if (psiReference.getElement().getParent() instanceof BnfAttr) {
-        CommonRefactoringUtil.showErrorHint(project, editor, "Rule is referenced in attributes", "Inline Rule", null);
-        return;
+    boolean hasNonAttributeRefs = false;
+    for (PsiReference ref : allReferences) {
+      if (!GrammarUtil.isInAttributesReference(ref.getElement())) {
+        hasNonAttributeRefs = true;
+        break;
       }
+    }
+    if (!hasNonAttributeRefs) {
+      CommonRefactoringUtil.showErrorHint(project, editor, "Rule is referenced only in attributes", "Inline Rule", null);
+      return;
     }
     if (!CommonRefactoringUtil.checkReadOnlyStatus(project, rule)) return;
     PsiReference reference = editor != null ? TargetElementUtil.findReference(editor, editor.getCaretModel().getOffset()) : null;
