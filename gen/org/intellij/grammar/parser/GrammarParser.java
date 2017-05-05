@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-present Greg Shrago
+ * Copyright 2011-2011 Gregory Shrago
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,26 +15,25 @@
  */
 package org.intellij.grammar.parser;
 
-import static org.intellij.grammar.parser.GrammarParserUtil.*;
-import static org.intellij.grammar.psi.BnfTypes.*;
-
-import com.intellij.lang.ASTNode;
 import com.intellij.lang.PsiBuilder;
 import com.intellij.lang.PsiBuilder.Marker;
-import com.intellij.lang.PsiParser;
+import static org.intellij.grammar.psi.BnfTypes.*;
+import static org.intellij.grammar.parser.GrammarParserUtil.*;
 import com.intellij.psi.tree.IElementType;
+import com.intellij.lang.ASTNode;
 import com.intellij.psi.tree.TokenSet;
+import com.intellij.lang.PsiParser;
 import consulo.lang.LanguageVersion;
 
 @SuppressWarnings({"SimplifiableIfStatement", "UnusedAssignment"})
 public class GrammarParser implements PsiParser {
 
-  public ASTNode parse(IElementType type, PsiBuilder builder, LanguageVersion languageVersion) {
-    parseLight(type, builder);
+  public ASTNode parse(IElementType type, PsiBuilder builder, LanguageVersion version) {
+    parseLight(type, builder, version);
     return builder.getTreeBuilt();
   }
 
-  public void parseLight(IElementType type, PsiBuilder builder) {
+  public void parseLight(IElementType type, PsiBuilder builder, LanguageVersion version) {
     boolean result;
     builder = adapt_builder_(type, builder, this, EXTENDS_SETS_);
     Marker marker = enter_section_(builder, 0, _COLLAPSE_, null);

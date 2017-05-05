@@ -211,10 +211,10 @@ public class ParserGenerator
 			myOut.println();
 			return;
 		}
-		boolean isComment = s.startsWith("//");
 		boolean newStatement = true;
 		for(int start = 0, end; start < length; start = end + 1)
 		{
+			boolean isComment = s.startsWith("//", start);
 			end = StringUtil.indexOf(s, '\n', start, length);
 			if(end == -1)
 			{
@@ -234,7 +234,7 @@ public class ParserGenerator
 				myOffset++;
 			}
 			myOut.println(substring);
-			newStatement = substring.endsWith(";") || substring.endsWith("{") || substring.endsWith("}");
+			newStatement = isComment || substring.endsWith(";") || substring.endsWith("{") || substring.endsWith("}");
 		}
 	}
 
@@ -466,8 +466,7 @@ public class ParserGenerator
 		}
 		imports.addAll(parserImports);
 
-		generateClassHeader(parserClass, imports, "@SuppressWarnings({\"SimplifiableIfStatement\", \"UnusedAssignment\"})", false, "", rootParser ? PSI_PARSER_CLASS : "", rootParser ?
-				"" : "");
+		generateClassHeader(parserClass, imports, "@SuppressWarnings({\"SimplifiableIfStatement\", \"UnusedAssignment\"})", false, "", rootParser ? PSI_PARSER_CLASS : "", rootParser ? "" : "");
 
 		if(rootParser)
 		{
@@ -755,9 +754,7 @@ public class ParserGenerator
 					{
 						sb.append(part).append(part.equals(",") ? " " : "");
 					}
-					else if(realImports.contains(part) ||
-							"java.lang".equals(pkg = StringUtil.getPackageName(part)) ||
-							realImports.contains(pkg + ".*"))
+					else if(realImports.contains(part) || "java.lang".equals(pkg = StringUtil.getPackageName(part)) || realImports.contains(pkg + ".*"))
 					{
 						sb.append(wildcard).append(StringUtil.getShortName(part));
 						changed = true;
@@ -790,7 +787,7 @@ public class ParserGenerator
 			File file = new File(mySourcePath, classHeader);
 			if(file.exists())
 			{
-				return FileUtil.loadFile(file);
+				return FileUtil.loadFile(file, true);
 			}
 		}
 		catch(IOException ex)
@@ -1705,10 +1702,8 @@ public class ParserGenerator
 
 	private boolean isIgnoredWhitespaceToken(@NotNull String tokenName, @NotNull String tokenText)
 	{
-		return isRegexpToken(tokenText) &&
-				!myTokensUsedInGrammar.contains(tokenName) &&
-				matchesAny(getRegexpTokenRegexp(tokenText), " ", "\n") &&
-				!matchesAny(getRegexpTokenRegexp(tokenText), "a", "1", "_", ".");
+		return isRegexpToken(tokenText) && !myTokensUsedInGrammar.contains(tokenName) && matchesAny(getRegexpTokenRegexp(tokenText), " ", "\n") && !matchesAny(getRegexpTokenRegexp(tokenText), "a",
+				"1", "_", ".");
 	}
 
 
@@ -1983,16 +1978,13 @@ public class ParserGenerator
 		RuleGraphHelper.Cardinality type = methodInfo.cardinality;
 		boolean many = type.many();
 		boolean required = type == REQUIRED && !many;
-		boolean stubbed = !isToken &&
-				myRulesStubNames.get(rule.getName()) != null &&
-				myRulesStubNames.get(methodInfo.rule.getName()) != null;
+		boolean stubbed = !isToken && myRulesStubNames.get(rule.getName()) != null && myRulesStubNames.get(methodInfo.rule.getName()) != null;
 		// todo REMOVEME. Keep old generation logic for a while.
 		if(myRulesStubNames.isEmpty())
 		{
 			if(isToken)
 			{
-				return (type == REQUIRED ? "findNotNullChildByType" : "findChildByType") +
-						"(" + getElementType(methodInfo.path) + ")";
+				return (type == REQUIRED ? "findNotNullChildByType" : "findChildByType") + "(" + getElementType(methodInfo.path) + ")";
 			}
 			else
 			{
@@ -2056,14 +2048,11 @@ public class ParserGenerator
 				continue;
 			}
 			RuleMethodsHelper.MethodInfo targetInfo = myRulesMethodsHelper.getMethodInfo(targetRule, item);
-			if(targetInfo == null ||
-					index != null && !targetInfo.cardinality.many() ||
-					i > 0 && StringUtil.isEmpty(targetInfo.name) && targetInfo.rule == null)
+			if(targetInfo == null || index != null && !targetInfo.cardinality.many() || i > 0 && StringUtil.isEmpty(targetInfo.name) && targetInfo.rule == null)
 			{
 				if(intf)
 				{ // warn only once
-					addWarning(startRule.getProject(), "incorrect item '" + pathElement + "' in '" + startRule.getName() + "' method " +
-							methodInfo.name + "=\"" + methodInfo.path + "\"");
+					addWarning(startRule.getProject(), "incorrect item '" + pathElement + "' in '" + startRule.getName() + "' method " + methodInfo.name + "=\"" + methodInfo.path + "\"");
 				}
 				return; // missing rule, unknown or wrong cardinality
 			}
