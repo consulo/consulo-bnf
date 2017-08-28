@@ -28,7 +28,6 @@ import java.util.regex.Pattern;
 
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
-import org.apache.velocity.runtime.log.NullLogChute;
 import org.intellij.grammar.KnownAttribute;
 import org.intellij.grammar.generator.BnfConstants;
 import org.intellij.grammar.generator.Case;
@@ -179,7 +178,6 @@ public class BnfGenerateLexerAction extends AnAction {
     });
 
     VelocityEngine ve = new VelocityEngine();
-    ve.setProperty(VelocityEngine.RUNTIME_LOG_LOGSYSTEM, new NullLogChute());
     ve.init();
     
     VelocityContext context = new VelocityContext();
