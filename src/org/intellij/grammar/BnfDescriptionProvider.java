@@ -15,20 +15,20 @@
  */
 package org.intellij.grammar;
 
+import org.intellij.grammar.psi.BnfAttr;
+import org.intellij.grammar.psi.BnfCompositeElement;
+import org.intellij.grammar.psi.BnfRule;
+import org.jetbrains.annotations.NotNull;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.ElementDescriptionLocation;
 import com.intellij.psi.ElementDescriptionProvider;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiNamedElement;
+import com.intellij.psi.codeStyle.NameUtil;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.usageView.UsageViewNodeTextLocation;
 import com.intellij.usageView.UsageViewShortNameLocation;
 import com.intellij.usageView.UsageViewTypeLocation;
-import org.apache.xmlbeans.impl.common.NameUtil;
-import org.intellij.grammar.psi.BnfAttr;
-import org.intellij.grammar.psi.BnfCompositeElement;
-import org.intellij.grammar.psi.BnfRule;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * @author gregory
@@ -56,7 +56,7 @@ public class BnfDescriptionProvider implements ElementDescriptionProvider {
     }
     else if (psiElement instanceof BnfCompositeElement) {
       if (location == UsageViewTypeLocation.INSTANCE) {
-        return StringUtil.join(NameUtil.splitWords(psiElement.getNode().getElementType().toString(), false), " ");
+        return StringUtil.join(NameUtil.nameToWords(psiElement.getNode().getElementType().toString()), " ");
       }
       return psiElement instanceof PsiNamedElement? ((PsiNamedElement) psiElement).getName() : psiElement.getClass().getSimpleName();
     }
