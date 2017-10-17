@@ -16,12 +16,12 @@
 
 package org.intellij.grammar.actions;
 
+import org.intellij.grammar.livePreview.LivePreviewHelper;
+import org.intellij.grammar.psi.BnfFile;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.LangDataKeys;
 import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.psi.PsiFile;
-import org.intellij.grammar.livePreview.LivePreviewHelper;
-import org.intellij.grammar.psi.BnfFile;
 
 /**
  * @author gregsh
@@ -29,13 +29,13 @@ import org.intellij.grammar.psi.BnfFile;
 public class LivePreviewAction extends DumbAwareAction {
   @Override
   public void update(AnActionEvent e) {
-    PsiFile psiFile = LangDataKeys.PSI_FILE.getData(e.getDataContext());
+    PsiFile psiFile = e.getData(LangDataKeys.PSI_FILE);
     e.getPresentation().setEnabledAndVisible(psiFile instanceof BnfFile);
   }
 
   @Override
   public void actionPerformed(AnActionEvent e) {
-    PsiFile psiFile = LangDataKeys.PSI_FILE.getData(e.getDataContext());
+    PsiFile psiFile = e.getData(LangDataKeys.PSI_FILE);
     if (!(psiFile instanceof BnfFile)) return;
 
     LivePreviewHelper.showFor((BnfFile)psiFile);

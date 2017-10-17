@@ -15,6 +15,22 @@
  */
 package org.intellij.grammar.actions;
 
+import static org.intellij.grammar.actions.FileGeneratorUtil.getTargetDirectoryFor;
+import static org.intellij.grammar.generator.ParserGeneratorUtil.getRootAttribute;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.intellij.grammar.KnownAttribute;
+import org.intellij.grammar.generator.BnfConstants;
+import org.intellij.grammar.generator.ParserGenerator;
+import org.intellij.grammar.psi.BnfFile;
+import org.jetbrains.annotations.NotNull;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationType;
@@ -43,22 +59,6 @@ import com.intellij.util.ExceptionUtil;
 import com.intellij.util.Function;
 import com.intellij.util.PathUtil;
 import com.intellij.util.containers.ContainerUtil;
-import org.intellij.grammar.KnownAttribute;
-import org.intellij.grammar.generator.BnfConstants;
-import org.intellij.grammar.generator.ParserGenerator;
-import org.intellij.grammar.psi.BnfFile;
-import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.intellij.grammar.actions.FileGeneratorUtil.getTargetDirectoryFor;
-import static org.intellij.grammar.generator.ParserGeneratorUtil.getRootAttribute;
 
 /**
  * @author gregory
@@ -79,7 +79,7 @@ public class GenerateAction extends AnAction {
 
   private static List<BnfFile> getFiles(AnActionEvent e) {
     Project project = e.getProject();
-    VirtualFile[] files = LangDataKeys.VIRTUAL_FILE_ARRAY.getData(e.getDataContext());
+    VirtualFile[] files = e.getData(LangDataKeys.VIRTUAL_FILE_ARRAY);
     if (project == null || files == null) return Collections.emptyList();
     final PsiManager manager = PsiManager.getInstance(project);
     return ContainerUtil.mapNotNull(files, new Function<VirtualFile, BnfFile>() {

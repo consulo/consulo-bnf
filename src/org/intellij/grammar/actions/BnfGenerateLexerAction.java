@@ -77,13 +77,13 @@ import consulo.psi.PsiPackage;
 public class BnfGenerateLexerAction extends AnAction {
   @Override
   public void update(AnActionEvent e) {
-    PsiFile file = LangDataKeys.PSI_FILE.getData(e.getDataContext());
+    PsiFile file = e.getData(LangDataKeys.PSI_FILE);
     e.getPresentation().setEnabledAndVisible(file instanceof BnfFile);
   }
 
   @Override
   public void actionPerformed(AnActionEvent e) {
-    final PsiFile file = LangDataKeys.PSI_FILE.getData(e.getDataContext());
+    final PsiFile file = e.getData(LangDataKeys.PSI_FILE);
     if (!(file instanceof BnfFile)) return;
 
     final Project project = file.getProject();

@@ -16,6 +16,13 @@
 
 package org.intellij.grammar.actions;
 
+import org.intellij.grammar.KnownAttribute;
+import org.intellij.grammar.generator.BnfConstants;
+import org.intellij.grammar.psi.BnfAttr;
+import org.intellij.grammar.psi.BnfAttrs;
+import org.intellij.grammar.psi.BnfFile;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import com.intellij.codeInsight.daemon.impl.quickfix.CreateClassKind;
 import com.intellij.codeInsight.intention.impl.CreateClassDialog;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -38,13 +45,6 @@ import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.util.Consumer;
 import com.intellij.util.IncorrectOperationException;
 import com.intellij.util.containers.ContainerUtil;
-import org.intellij.grammar.KnownAttribute;
-import org.intellij.grammar.generator.BnfConstants;
-import org.intellij.grammar.psi.BnfAttr;
-import org.intellij.grammar.psi.BnfAttrs;
-import org.intellij.grammar.psi.BnfFile;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * @author greg
@@ -52,7 +52,7 @@ import org.jetbrains.annotations.Nullable;
 public class BnfGenerateParserUtilAction extends AnAction {
   @Override
   public void update(AnActionEvent e) {
-    PsiFile file = LangDataKeys.PSI_FILE.getData(e.getDataContext());
+    PsiFile file = e.getData(LangDataKeys.PSI_FILE);
     if (!(file instanceof BnfFile)) {
       e.getPresentation().setEnabledAndVisible(false);
     }
@@ -64,7 +64,7 @@ public class BnfGenerateParserUtilAction extends AnAction {
 
   @Override
   public void actionPerformed(AnActionEvent e) {
-    PsiFile file = LangDataKeys.PSI_FILE.getData(e.getDataContext());
+    PsiFile file = e.getData(LangDataKeys.PSI_FILE);
     if (!(file instanceof BnfFile)) return;
 
     Project project = file.getProject();

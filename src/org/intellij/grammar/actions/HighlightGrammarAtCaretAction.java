@@ -16,6 +16,12 @@
 
 package org.intellij.grammar.actions;
 
+import java.util.List;
+
+import org.intellij.grammar.livePreview.GrammarAtCaretPassFactory;
+import org.intellij.grammar.livePreview.LivePreviewLanguage;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.lang.Language;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -25,13 +31,7 @@ import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.util.ObjectUtils;
-import org.intellij.grammar.livePreview.GrammarAtCaretPassFactory;
-import org.intellij.grammar.livePreview.LivePreviewLanguage;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
+import com.intellij.util.ObjectUtil;
 
 /**
  * @author gregsh
@@ -40,8 +40,8 @@ public class HighlightGrammarAtCaretAction extends AnAction {
 
   @Nullable
   private static Editor getPreviewEditor(@NotNull AnActionEvent e) {
-    Editor editor = PlatformDataKeys.EDITOR.getData(e.getDataContext());
-    PsiFile psiFile = LangDataKeys.PSI_FILE.getData(e.getDataContext());
+    Editor editor = e.getData(PlatformDataKeys.EDITOR);
+    PsiFile psiFile = e.getData(LangDataKeys.PSI_FILE);
     Language language = psiFile == null ? null : psiFile.getLanguage();
     LivePreviewLanguage livePreviewLanguage = language instanceof LivePreviewLanguage ? (LivePreviewLanguage)language : null;
     if (livePreviewLanguage == null) return null;
@@ -65,7 +65,7 @@ public class HighlightGrammarAtCaretAction extends AnAction {
     Boolean value = GrammarAtCaretPassFactory.GRAMMAR_AT_CARET_KEY.get(editor);
     GrammarAtCaretPassFactory.GRAMMAR_AT_CARET_KEY.set(editor, value == null ? Boolean.TRUE : null);
 
-    Project project = ObjectUtils.assertNotNull(e.getProject());
+    Project project = ObjectUtil.assertNotNull(e.getProject());
     DaemonCodeAnalyzer.getInstance(project).restart();
   }
 }
