@@ -43,7 +43,6 @@ import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
-import com.intellij.openapi.fileEditor.impl.EditorWindow;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.NotNullLazyKey;
@@ -59,6 +58,7 @@ import com.intellij.util.NotNullFunction;
 import com.intellij.util.PairProcessor;
 import com.intellij.util.SingleAlarm;
 import com.intellij.util.containers.ContainerUtil;
+import consulo.fileEditor.impl.EditorWindow;
 import consulo.lang.util.LanguageVersionUtil;
 
 /**
