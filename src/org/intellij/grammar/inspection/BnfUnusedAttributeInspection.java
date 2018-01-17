@@ -33,7 +33,6 @@ import com.intellij.psi.PsiElementVisitor;
  */
 public class BnfUnusedAttributeInspection extends LocalInspectionTool
 {
-
 	@NotNull
 	@Override
 	public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly, @NotNull LocalInspectionToolSession session)
