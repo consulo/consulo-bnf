@@ -18,6 +18,13 @@
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
+		<localInspection language="BNF" level="WARNING" groupName="Grammar Inspections" enabledByDefault="true"
+						 displayName="Unused rule"
+						 implementationClass="org.intellij.grammar.inspection.BnfUnusedRuleInspection"/>
+		<localInspection language="BNF" level="WARNING" groupName="Grammar Inspections" enabledByDefault="true"
+						 displayName="Unused attribute"
+						 implementationClass="org.intellij.grammar.inspection.BnfUnusedAttributeInspection"/>
+
 		<iconDescriptorUpdater implementation="consulo.grammarKit.BnfIconDescriptorUpdater"/>
 		<fileTypeFactory implementation="org.intellij.grammar.BnfFileTypeFactory"/>
 		<lang.parserDefinition language="BNF" implementationClass="org.intellij.grammar.BnfParserDefinition"/>
@@ -71,12 +78,7 @@
 			<category>Grammar</category>
 		</intentionAction>
 	</extensions>
-	<project-components>
-		<component>
-			<implementation-class>org.intellij.grammar.BnfUnusedRulePassFactory</implementation-class>
-			<skipForDefaultProject/>
-		</component>
-	</project-components>
+
 	<actions>
 		<group id="grammar.file.group" popup="false">
 			<action id="grammar.Generate" class="org.intellij.grammar.actions.GenerateAction" text="Generate Parser Code">
