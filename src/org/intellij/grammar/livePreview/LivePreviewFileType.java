@@ -16,14 +16,12 @@
 
 package org.intellij.grammar.livePreview;
 
-import com.intellij.openapi.fileTypes.FileType;
-import com.intellij.openapi.fileTypes.LanguageFileType;
-import com.intellij.openapi.vfs.VirtualFile;
 import org.intellij.grammar.BnfIcons;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import javax.swing.*;
+import com.intellij.openapi.fileTypes.FileType;
+import com.intellij.openapi.fileTypes.LanguageFileType;
+import consulo.ui.image.Image;
 
 /**
  * @author gregsh
@@ -37,7 +35,7 @@ public class LivePreviewFileType extends LanguageFileType {
 
   @NotNull
   @Override
-  public String getName() {
+  public String getId() {
     return "Grammar Live Preview";
   }
 
@@ -55,18 +53,7 @@ public class LivePreviewFileType extends LanguageFileType {
 
   @Nullable
   @Override
-  public Icon getIcon() {
+  public Image getIcon() {
     return BnfIcons.FILE;
-  }
-
-  @Override
-  public boolean isReadOnly() {
-    return false;
-  }
-
-  @Nullable
-  @Override
-  public String getCharset(@NotNull VirtualFile file, byte[] content) {
-    return null;
   }
 }

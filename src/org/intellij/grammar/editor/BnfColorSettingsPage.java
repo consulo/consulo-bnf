@@ -66,10 +66,6 @@ public class BnfColorSettingsPage implements ColorSettingsPage {
     return "Grammar";
   }
 
-  public Icon getIcon() {
-    return BnfIcons.FILE;
-  }
-
   @NotNull
   public AttributesDescriptor[] getAttributeDescriptors() {
     return ATTRS;
