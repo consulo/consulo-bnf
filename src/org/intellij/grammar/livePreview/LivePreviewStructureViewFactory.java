@@ -16,7 +16,25 @@
 
 package org.intellij.grammar.livePreview;
 
-import com.intellij.ide.structureView.*;
+import static org.intellij.grammar.generator.ParserGeneratorUtil.getPsiClassFormat;
+import static org.intellij.grammar.generator.ParserGeneratorUtil.getRulePsiClassName;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+
+import javax.swing.Icon;
+
+import org.intellij.grammar.BnfIcons;
+import org.intellij.grammar.psi.BnfFile;
+import org.intellij.grammar.psi.BnfRule;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import com.intellij.ide.structureView.StructureViewBuilder;
+import com.intellij.ide.structureView.StructureViewModel;
+import com.intellij.ide.structureView.StructureViewModelBase;
+import com.intellij.ide.structureView.StructureViewTreeElement;
+import com.intellij.ide.structureView.TreeBasedStructureViewBuilder;
 import com.intellij.ide.structureView.impl.common.PsiTreeElementBase;
 import com.intellij.ide.util.treeView.smartTree.SortableTreeElement;
 import com.intellij.lang.ASTNode;
@@ -32,19 +50,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiWhiteSpace;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.tree.IElementType;
-import org.intellij.grammar.BnfIcons;
-import org.intellij.grammar.psi.BnfFile;
-import org.intellij.grammar.psi.BnfRule;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import javax.swing.*;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-
-import static org.intellij.grammar.generator.ParserGeneratorUtil.getPsiClassFormat;
-import static org.intellij.grammar.generator.ParserGeneratorUtil.getRulePsiClassName;
+import consulo.awt.TargetAWT;
 
 /**
  * @author gregsh
@@ -156,7 +162,7 @@ public class LivePreviewStructureViewFactory implements PsiStructureViewFactory 
       ASTNode node = element != null ? element.getNode() : null;
       IElementType elementType = node != null ? node.getElementType() : null;
       if (elementType instanceof LivePreviewElementType.RuleType) {
-        return BnfIcons.RULE;
+        return TargetAWT.to(BnfIcons.RULE);
       }
       return null;
     }

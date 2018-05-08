@@ -46,6 +46,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiNamedElement;
 import com.intellij.util.PlatformIcons;
 import com.intellij.util.containers.ContainerUtil;
+import consulo.awt.TargetAWT;
 import consulo.ide.IconDescriptorUpdaters;
 
 /**
@@ -165,7 +166,7 @@ public class BnfStructureViewFactory implements PsiStructureViewFactory {
     public Icon getIcon(boolean open) {
       PsiElement element = getElement();
       if (element == null) return null;
-      return element instanceof BnfAttrs ? PlatformIcons.PACKAGE_ICON : IconDescriptorUpdaters.getIcon(element, 0);
+      return element instanceof BnfAttrs ? PlatformIcons.PACKAGE_ICON : TargetAWT.to(IconDescriptorUpdaters.getIcon(element, 0));
     }
   }
 }

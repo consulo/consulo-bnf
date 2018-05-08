@@ -15,10 +15,8 @@
  */
 package org.intellij.grammar;
 
-import javax.swing.Icon;
-
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.IconLoader;
-import com.intellij.util.PlatformIcons;
 import consulo.ui.image.Image;
 
 /**
@@ -29,9 +27,9 @@ public interface BnfIcons
 {
 	Image FILE = IconLoader.getIcon("/resources/file.png");
 
-	Icon RULE = PlatformIcons.METHOD_ICON;
-	Icon EXTERNAL_RULE = PlatformIcons.ABSTRACT_METHOD_ICON;
-	Icon ATTRIBUTE = PlatformIcons.FIELD_ICON;
+	Image RULE = AllIcons.Nodes.Method;
+	Image EXTERNAL_RULE = AllIcons.Nodes.AbstractMethod;
+	Image ATTRIBUTE = AllIcons.Nodes.Attribute;
 
-	Icon RELATED_METHOD = IconLoader.getIcon("/gutter/implementedMethod.png");
+	Image RELATED_METHOD = IconLoader.getIcon("/gutter/implementedMethod.png");
 }
